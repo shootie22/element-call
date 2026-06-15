@@ -230,6 +230,10 @@ export const GroupCallView: FC<Props> = ({
     () => new Set<string>(memberships.map((m) => m.userId!)).size,
     [memberships],
   );
+  const participantUserIds = useMemo(
+    () => [...new Set<string>(memberships.map((m) => m.userId as string))],
+    [memberships],
+  );
 
   const mediaDevices = useMediaDevices();
   const latestMuteStates = useLatest(muteStates);
@@ -473,6 +477,7 @@ export const GroupCallView: FC<Props> = ({
         hideHeader={header !== HeaderStyle.Standard}
         participantCount={participantCount}
         onShareClick={onShareClick}
+        participantUserIds={participantUserIds}
       />
     </>
   );

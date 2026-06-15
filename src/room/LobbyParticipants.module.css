@@ -1,0 +1,39 @@
+.participants {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cpd-space-6x);
+  padding: var(--cpd-space-4x) 0;
+  flex-wrap: wrap;
+}
+
+.participant {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--cpd-space-2x);
+  min-width: 0;
+}
+
+.name {
+  font: var(--cpd-font-body-xs-medium);
+  color: var(--cpd-color-text-secondary);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 72px;
+}
+
+.overflowBadge {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cpd-color-bg-subtle-secondary);
+  color: var(--cpd-color-text-primary);
+  font: var(--cpd-font-body-md-semibold);
+}

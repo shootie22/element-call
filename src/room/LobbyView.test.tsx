@@ -42,9 +42,26 @@ vi.mock("../settings/SettingsModal", () => ({
   defaultSettingsTab: "general",
 }));
 
+const mockMember = (userId: string, displayName: string) => ({
+  userId,
+  name: displayName,
+  rawDisplayName: displayName,
+  getMxcAvatarUrl: () => null,
+});
+
 const mockClient = {
   getUserId: () => "@user:example.org",
   getDeviceId: () => "DEVICE",
+  getRoom: () => ({
+    getMember: (userId: string) => {
+      const members: Record<string, ReturnType<typeof mockMember>> = {
+        "@alice:example.org": mockMember("@alice:example.org", "Alice"),
+        "@bob:example.org": mockMember("@bob:example.org", "Bob"),
+        "@charlie:example.org": mockMember("@charlie:example.org", "Charlie"),
+      };
+      return members[userId] ?? null;
+    },
+  }),
 } as Partial<MatrixClient> as MatrixClient;
 
 const matrixInfo = {
@@ -107,5 +124,28 @@ describe("LobbyView", () => {
       waitingForInvite: true,
     });
     expect(getByTestId("lobby_joinCall")).toHaveClass(lobbyStyles.wait);
+  });
+
+  it("renders participant avatars when participantUserIds is provided", () => {
+    const { container } = renderLobbyView({
+      participantUserIds: ["@alice:example.org", "@bob:example.org"],
+    });
+    expect(container.textContent).toContain("Alice");
+    expect(container.textContent).toContain("Bob");
+  });
+
+  it("renders overflow badge when more than 5 participants", () => {
+    const { container } = renderLobbyView({
+      participantUserIds: [
+        "@alice:example.org",
+        "@bob:example.org",
+        "@charlie:example.org",
+        "@dave:example.org",
+        "@eve:example.org",
+        "@frank:example.org",
+      ],
+    });
+    expect(container.textContent).toContain("+1");
+    expect(container.textContent).toContain("more");
   });
 });
