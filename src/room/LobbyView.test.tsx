@@ -42,26 +42,9 @@ vi.mock("../settings/SettingsModal", () => ({
   defaultSettingsTab: "general",
 }));
 
-const mockMember = (userId: string, displayName: string) => ({
-  userId,
-  name: displayName,
-  rawDisplayName: displayName,
-  getMxcAvatarUrl: () => null,
-});
-
 const mockClient = {
   getUserId: () => "@user:example.org",
   getDeviceId: () => "DEVICE",
-  getRoom: () => ({
-    getMember: (userId: string) => {
-      const members: Record<string, ReturnType<typeof mockMember>> = {
-        "@alice:example.org": mockMember("@alice:example.org", "Alice"),
-        "@bob:example.org": mockMember("@bob:example.org", "Bob"),
-        "@charlie:example.org": mockMember("@charlie:example.org", "Charlie"),
-      };
-      return members[userId] ?? null;
-    },
-  }),
 } as Partial<MatrixClient> as MatrixClient;
 
 const matrixInfo = {
@@ -126,9 +109,12 @@ describe("LobbyView", () => {
     expect(getByTestId("lobby_joinCall")).toHaveClass(lobbyStyles.wait);
   });
 
-  it("renders participant avatars when participantUserIds is provided", () => {
+  it("renders participant avatars when participants are provided", () => {
     const { container } = renderLobbyView({
-      participantUserIds: ["@alice:example.org", "@bob:example.org"],
+      participants: [
+        { userId: "@alice:example.org", name: "Alice" },
+        { userId: "@bob:example.org", name: "Bob" },
+      ],
     });
     expect(container.textContent).toContain("Alice");
     expect(container.textContent).toContain("Bob");
@@ -136,13 +122,13 @@ describe("LobbyView", () => {
 
   it("renders overflow badge when more than 5 participants", () => {
     const { container } = renderLobbyView({
-      participantUserIds: [
-        "@alice:example.org",
-        "@bob:example.org",
-        "@charlie:example.org",
-        "@dave:example.org",
-        "@eve:example.org",
-        "@frank:example.org",
+      participants: [
+        { userId: "@alice:example.org", name: "Alice" },
+        { userId: "@bob:example.org", name: "Bob" },
+        { userId: "@charlie:example.org", name: "Charlie" },
+        { userId: "@dave:example.org", name: "Dave" },
+        { userId: "@eve:example.org", name: "Eve" },
+        { userId: "@frank:example.org", name: "Frank" },
       ],
     });
     expect(container.textContent).toContain("+1");

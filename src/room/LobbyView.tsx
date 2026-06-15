@@ -51,7 +51,7 @@ import { CallFooter, type FooterSnapshot } from "../components/CallFooter";
 import { useCallViewKeyboardShortcuts } from "../useCallViewKeyboardShortcuts";
 import { createLobbyFooterViewModel } from "../components/CallFooterViewModel";
 import { type ViewModel } from "../state/ViewModel";
-import { LobbyParticipants } from "./LobbyParticipants";
+import { LobbyParticipants, type LobbyParticipant } from "./LobbyParticipants";
 
 interface Props {
   client: MatrixClient;
@@ -64,7 +64,7 @@ interface Props {
   participantCount: number | null;
   onShareClick: (() => void) | null;
   waitingForInvite?: boolean;
-  participantUserIds?: string[];
+  participants?: LobbyParticipant[];
 }
 
 export const LobbyView: FC<Props> = ({
@@ -78,7 +78,7 @@ export const LobbyView: FC<Props> = ({
   participantCount,
   onShareClick,
   waitingForInvite,
-  participantUserIds,
+  participants,
 }) => {
   useEffect(() => {
     logger.info("[Lifecycle] LobbyView Component mounted");
@@ -234,12 +234,8 @@ export const LobbyView: FC<Props> = ({
           </Header>
         )}
         <div className={styles.content}>
-          {participantUserIds && participantUserIds.length > 0 && (
-            <LobbyParticipants
-              client={client}
-              roomId={matrixInfo.roomId}
-              userIds={participantUserIds}
-            />
+          {participants && participants.length > 0 && (
+            <LobbyParticipants participants={participants} />
           )}
           <VideoPreview
             matrixInfo={matrixInfo}

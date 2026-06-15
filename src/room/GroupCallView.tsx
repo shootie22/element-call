@@ -80,6 +80,7 @@ import { useTypedEventEmitter } from "../useEvents";
 import { muteAllAudio$ } from "../state/MuteAllAudioModel.ts";
 import { useAppBarTitle } from "../AppBar.tsx";
 import { useBehavior } from "../useBehavior.ts";
+import { type LobbyParticipant } from "./LobbyParticipants";
 
 /**
  * If there already are this many participants in the call, we automatically mute
@@ -234,6 +235,16 @@ export const GroupCallView: FC<Props> = ({
     () => [...new Set<string>(memberships.map((m) => m.userId as string))],
     [memberships],
   );
+  const participants = useMemo<LobbyParticipant[]>(() => {
+    return participantUserIds.map((userId) => {
+      const member = room.getMember(userId);
+      return {
+        userId,
+        name: member?.name || member?.rawDisplayName || userId,
+        avatarUrl: member?.getMxcAvatarUrl() ?? undefined,
+      };
+    });
+  }, [participantUserIds, room]);
 
   const mediaDevices = useMediaDevices();
   const latestMuteStates = useLatest(muteStates);
@@ -477,7 +488,7 @@ export const GroupCallView: FC<Props> = ({
         hideHeader={header !== HeaderStyle.Standard}
         participantCount={participantCount}
         onShareClick={onShareClick}
-        participantUserIds={participantUserIds}
+        participants={participants}
       />
     </>
   );
