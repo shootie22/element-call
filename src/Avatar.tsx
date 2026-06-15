@@ -76,6 +76,8 @@ export const Avatar: FC<Props> = ({
   ...props
 }) => {
   const clientState = useClientState();
+  const client =
+    clientState?.state === "valid" ? clientState.authenticated?.client : undefined;
 
   const sizePx = useMemo(
     () =>
@@ -87,7 +89,6 @@ export const Avatar: FC<Props> = ({
 
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
 
-  // In theory, a change in `clientState` or `sizePx` could run extra getAvatarFromWidgetAPI calls, but in practice they should be stable long before this code runs.
   useEffect(() => {
     if (!src) {
       setAvatarUrl(undefined);
@@ -98,12 +99,8 @@ export const Avatar: FC<Props> = ({
 
     if (widget?.api) {
       blob = getAvatarFromWidgetAPI(widget.api, src);
-    } else if (
-      clientState?.state === "valid" &&
-      clientState.authenticated?.client &&
-      sizePx
-    ) {
-      blob = getAvatarFromServer(clientState.authenticated.client, src, sizePx);
+    } else if (client && sizePx) {
+      blob = getAvatarFromServer(client, src, sizePx);
     } else {
       setAvatarUrl(undefined);
       return;
@@ -128,11 +125,12 @@ export const Avatar: FC<Props> = ({
 
     return (): void => {
       stale = true;
+      setAvatarUrl(undefined);
       if (objectUrl) {
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [clientState, src, sizePx]);
+  }, [client, src, sizePx]);
 
   return (
     <CompoundAvatar

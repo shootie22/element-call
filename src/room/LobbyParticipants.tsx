@@ -13,6 +13,8 @@ interface Props {
 const MAX_VISIBLE = 5;
 
 export const LobbyParticipants: FC<Props> = ({ client, roomId, userIds }) => {
+  const userIdsKey = useMemo(() => userIds.join(","), [userIds]);
+
   const participants = useMemo(() => {
     const room = client.getRoom(roomId);
     return userIds.slice(0, MAX_VISIBLE).map((userId) => {
@@ -23,7 +25,8 @@ export const LobbyParticipants: FC<Props> = ({ client, roomId, userIds }) => {
         avatarUrl: member?.getMxcAvatarUrl() ?? undefined,
       };
     });
-  }, [client, roomId, userIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client, roomId, userIdsKey]);
 
   const remaining = Math.max(0, userIds.length - MAX_VISIBLE);
 
