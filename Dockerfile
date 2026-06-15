@@ -1,13 +1,18 @@
-FROM alpine AS builder
+FROM node:24-alpine AS builder
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
-COPY ./dist /dist
+WORKDIR /build
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+RUN pnpm fetch
 
-# Compress assets to work with nginx-gzip-static-module
-WORKDIR /dist/assets
-RUN gzip -k ../index.html *.js *.map *.css *.wasm *-app-*.json 
+COPY . .
+RUN pnpm install --offline
+RUN pnpm build:full
+
+WORKDIR /build/dist/assets
+RUN gzip -k ../index.html *.js *.map *.css *.wasm *-app-*.json
 
 FROM nginxinc/nginx-unprivileged:alpine-slim
-
-COPY --from=builder ./dist /app
-
+COPY --from=builder /build/dist /app
 COPY config/nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 8080

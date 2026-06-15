@@ -241,6 +241,12 @@ export interface UrlConfiguration {
   noiseSuppression?: boolean;
 
   callIntent?: RTCCallIntent;
+
+  /**
+   * Whether to start the call with the camera muted.
+   * When true, video will be disabled on join regardless of call intent.
+   */
+  startWithCameraMuted?: boolean;
 }
 
 // If you need to add a new flag to this interface, prefer a name that describes
@@ -485,6 +491,7 @@ export const computeUrlParams = (search = "", hash = ""): UrlParams => {
     autoLeaveWhenOthersLeft: parser.getFlag("autoLeave"),
     noiseSuppression: parser.getFlagParam("noiseSuppression", true),
     echoCancellation: parser.getFlagParam("echoCancellation", true),
+    startWithCameraMuted: parser.getFlag("startWithCameraMuted"),
   };
 
   // Log the final configuration for debugging purposes.

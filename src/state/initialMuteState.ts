@@ -18,9 +18,10 @@ export function calculateInitialMuteState(
   skipLobby: boolean,
   callIntent: RTCCallIntent | undefined,
   isWidgetMode: boolean,
+  startWithCameraMuted?: boolean,
 ): { audioEnabled: boolean; videoEnabled: boolean } {
   logger.debug(
-    `calculateInitialMuteState: skipLobby=${skipLobby}, callIntent=${callIntent} isWidgetMode=${isWidgetMode}`,
+    `calculateInitialMuteState: skipLobby=${skipLobby}, callIntent=${callIntent} isWidgetMode=${isWidgetMode} startWithCameraMuted=${startWithCameraMuted}`,
   );
 
   if (skipLobby && !isWidgetMode) {
@@ -32,11 +33,13 @@ export function calculateInitialMuteState(
     };
   }
 
-  // Embedded contexts are trusted environments, so they allow unmuted by default.
-  // Same for when showing a lobby, as users can adjust their settings there.
-  // Additionally, if the call intent is "audio", we disable video by default.
+  // By default, camera is disabled for all calls to protect user privacy.
+  // The host client can explicitly set startWithCameraMuted=false to allow
+  // the camera to be enabled based on the call intent.
+  const videoEnabled =
+    startWithCameraMuted === false ? callIntent != "audio" : false;
   return {
     audioEnabled: true,
-    videoEnabled: callIntent != "audio",
+    videoEnabled,
   };
 }

@@ -21,12 +21,60 @@ test.each<{
   { callIntent: "unknown", isWidgetMode: false },
   { callIntent: "unknown", isWidgetMode: true },
 ])(
-  "Should allow to unmute on start if not skipping lobby (callIntent: $callIntent, packageType: $packageType)",
+  "Should disable video by default (startWithCameraMuted not set) (callIntent: $callIntent, isWidgetMode: $isWidgetMode)",
   ({ callIntent, isWidgetMode }) => {
     const { audioEnabled, videoEnabled } = calculateInitialMuteState(
       false,
       callIntent,
       isWidgetMode,
+    );
+    expect(audioEnabled).toBe(true);
+    expect(videoEnabled).toBe(false);
+  },
+);
+
+test.each<{
+  callIntent: RTCCallIntent;
+  isWidgetMode: boolean;
+}>([
+  { callIntent: "audio", isWidgetMode: false },
+  { callIntent: "audio", isWidgetMode: true },
+  { callIntent: "video", isWidgetMode: false },
+  { callIntent: "video", isWidgetMode: true },
+  { callIntent: "unknown", isWidgetMode: false },
+  { callIntent: "unknown", isWidgetMode: true },
+])(
+  "Should disable video when startWithCameraMuted is true (callIntent: $callIntent, isWidgetMode: $isWidgetMode)",
+  ({ callIntent, isWidgetMode }) => {
+    const { audioEnabled, videoEnabled } = calculateInitialMuteState(
+      false,
+      callIntent,
+      isWidgetMode,
+      true,
+    );
+    expect(audioEnabled).toBe(true);
+    expect(videoEnabled).toBe(false);
+  },
+);
+
+test.each<{
+  callIntent: RTCCallIntent;
+  isWidgetMode: boolean;
+}>([
+  { callIntent: "audio", isWidgetMode: false },
+  { callIntent: "audio", isWidgetMode: true },
+  { callIntent: "video", isWidgetMode: false },
+  { callIntent: "video", isWidgetMode: true },
+  { callIntent: "unknown", isWidgetMode: false },
+  { callIntent: "unknown", isWidgetMode: true },
+])(
+  "Should allow video based on call intent when startWithCameraMuted is false (callIntent: $callIntent, isWidgetMode: $isWidgetMode)",
+  ({ callIntent, isWidgetMode }) => {
+    const { audioEnabled, videoEnabled } = calculateInitialMuteState(
+      false,
+      callIntent,
+      isWidgetMode,
+      false,
     );
     expect(audioEnabled).toBe(true);
     expect(videoEnabled).toBe(callIntent !== "audio");
@@ -67,6 +115,8 @@ test.each<{
       true,
     );
     expect(audioEnabled).toBe(true);
-    expect(videoEnabled).toBe(callIntent !== "audio");
+    expect(videoEnabled).toBe(false);
   },
 );
+
+export {}
