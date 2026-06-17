@@ -5,15 +5,16 @@ on:
       - synchronize
       - opened
       - labeled
-  push:
-    branches: [livekit, full-mesh]
+   push:
+     branches: [livekit, full-mesh]
+     tags: [v*]
 jobs:
   build_full_element_call:
     # Use the full package vite build
     uses: ./.github/workflows/build-element-call.yaml
     with:
       package: full
-      vite_app_version: ${{ github.event.release.tag_name || github.sha }}
+      vite_app_version: ${{ github.event.release.tag_name || (github.ref_type == 'tag' && github.ref_name) || github.sha }}
       build_mode: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'development build') && 'development' || 'production' }}
     secrets:
       SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -63,7 +64,7 @@ jobs:
     uses: ./.github/workflows/build-element-call.yaml
     with:
       package: embedded
-      vite_app_version: ${{ github.event.release.tag_name || github.sha }}
+      vite_app_version: ${{ github.event.release.tag_name || (github.ref_type == 'tag' && github.ref_name) || github.sha }}
       build_mode: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'development build') && 'development' || 'production' }}
     secrets:
       SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -77,7 +78,7 @@ jobs:
     uses: ./.github/workflows/build-element-call.yaml
     with:
       package: sdk
-      vite_app_version: ${{ github.event.release.tag_name || github.sha }}
+      vite_app_version: ${{ github.event.release.tag_name || (github.ref_type == 'tag' && github.ref_name) || github.sha }}
       build_mode: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'development build') && 'development' || 'production' }}
     secrets:
       SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
