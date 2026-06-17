@@ -21,7 +21,7 @@ jobs:
     permissions:
       contents: write # required to upload release asset
       packages: write # needed for publishing packages to GHCR
-      id-token: write # needed for login into tailscale with GitHub OIDC Token
+      # id-token: write # was needed for tailscale OIDC login (removed)
     steps:
       - name: Check it out
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -43,13 +43,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Connect to Tailscale
-        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
-        if: github.event_name != 'pull_request'
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          audience: ${{ secrets.TS_AUDIENCE }}
-          tags: tag:github-actions
+      # - name: Connect to Tailscale
+      #   uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
+      #   if: github.event_name != 'pull_request'
+      #   with:
+      #     oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+      #     audience: ${{ secrets.TS_AUDIENCE }}
+      #     tags: tag:github-actions
 
       - name: Compute vault jwt role name
         id: vault-jwt-role
