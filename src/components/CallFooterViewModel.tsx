@@ -206,13 +206,14 @@ export function createCallFooterViewModel(
     hangup$: constant(callModel.hangup),
 
     deafenEnabled$: muteAllAudioSetting.value$,
-    toggleDeafen$: scope.behavior(
-      muteAllAudioSetting.value$.pipe(
-        map((current) => (): void => {
-          muteAllAudioSetting.setValue(!current);
-        }),
-      ),
-    ),
+    toggleDeafen$: constant(() => {
+      const willDeafen = !muteAllAudioSetting.getValue();
+      muteAllAudioSetting.setValue(willDeafen);
+      const setAudio = muteStates.audio.setEnabled$.value;
+      if (setAudio) {
+        setAudio(willDeafen);
+      }
+    }),
 
     reactionIdentifier$: constant(reactionIdentifier),
     reactionData$: constant(
