@@ -189,17 +189,17 @@ interface DeafenButtonProps extends ComponentPropsWithoutRef<"button"> {
 
 export const DeafenButton: FC<DeafenButtonProps> = ({ enabled, ...props }) => {
   const { t } = useTranslation();
-  const Icon = enabled ? HeadphonesSolidIcon : HeadphonesOffSolidIcon;
+  const Icon = enabled ? HeadphonesOffSolidIcon : HeadphonesSolidIcon;
   const label = enabled
-    ? t("deafen_button_label")
-    : t("undeafen_button_label");
+    ? t("undeafen_button_label")
+    : t("deafen_button_label");
 
   return (
     <Tooltip label={label}>
       <CpdButton
         iconOnly
         Icon={Icon}
-        kind={enabled ? "secondary" : "primary"}
+        kind={enabled ? "primary" : "secondary"}
         role="switch"
         aria-checked={enabled}
         {...props}
