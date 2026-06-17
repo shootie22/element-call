@@ -21,28 +21,6 @@ jobs:
       SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
       SENTRY_URL: ${{ secrets.SENTRY_URL }}
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-  deploy_develop:
-    # Deploy livekit branch to call.element.dev after build completes
-    if: github.ref == 'refs/heads/livekit'
-    needs: build_full_element_call
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to call.element.dev
-        uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
-        with:
-          github-token: ${{ secrets.DEVELOP_DEPLOYMENT_TOKEN }}
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-                owner: 'element-hq',
-                repo: 'element-call-webapp-deployments',
-                workflow_id: 'deploy.yml',
-                ref: 'main',
-                inputs: {
-                  target: 'call.element.dev',
-                  version: '${{ github.sha }}'
-                }
-            })
   docker_for_develop:
     # Build docker and publish docker for livekit branch after build completes
     if: github.ref == 'refs/heads/livekit'
@@ -71,7 +49,7 @@ jobs:
       SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
       SENTRY_URL: ${{ secrets.SENTRY_URL }}
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
 
   build_sdk_element_call:
     # Use the embedded package vite build
@@ -85,7 +63,7 @@ jobs:
       SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
       SENTRY_URL: ${{ secrets.SENTRY_URL }}
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
 
   build_storybook:
     name: Build Storybook
