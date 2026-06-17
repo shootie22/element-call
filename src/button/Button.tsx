@@ -25,6 +25,8 @@ import {
   OverflowVerticalIcon,
   VolumeOnSolidIcon,
   VolumeOffSolidIcon,
+  HeadphonesSolidIcon,
+  HeadphonesOffSolidIcon,
 } from "@vector-im/compound-design-tokens/assets/web/icons";
 
 import styles from "./Button.module.css";
@@ -175,6 +177,32 @@ export const LoudspeakerButton: FC<LoudspeakerButtonProps> = ({
         {...props}
         kind={loudspeakerModeEnabled ? "primary" : "secondary"}
         aria-checked={loudspeakerModeEnabled}
+      />
+    </Tooltip>
+  );
+};
+
+interface DeafenButtonProps extends ComponentPropsWithoutRef<"button"> {
+  enabled: boolean;
+  size?: "md" | "lg";
+}
+
+export const DeafenButton: FC<DeafenButtonProps> = ({ enabled, ...props }) => {
+  const { t } = useTranslation();
+  const Icon = enabled ? HeadphonesSolidIcon : HeadphonesOffSolidIcon;
+  const label = enabled
+    ? t("deafen_button_label")
+    : t("undeafen_button_label");
+
+  return (
+    <Tooltip label={label}>
+      <CpdButton
+        iconOnly
+        Icon={Icon}
+        kind={enabled ? "secondary" : "primary"}
+        role="switch"
+        aria-checked={enabled}
+        {...props}
       />
     </Tooltip>
   );

@@ -91,6 +91,8 @@ export const Default: Story = {
     toggleBlur: fn(),
     videoBlurEnabled: true,
     hangup: fn(),
+    deafenEnabled: false,
+    toggleDeafen: fn(),
     buttonSize: "lg",
     showFooter: true,
     hideControls: false,

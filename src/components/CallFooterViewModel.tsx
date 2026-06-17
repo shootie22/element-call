@@ -14,6 +14,7 @@ import { type MediaDevices } from "../state/MediaDevices";
 import {
   backgroundBlur as backgroundBlurSettings,
   debugTileLayout as debugTileLayoutSetting,
+  muteAllAudio as muteAllAudioSetting,
 } from "../settings/settings";
 import { type Behavior, constant } from "../state/Behavior";
 import type { ObservableScope } from "../state/ObservableScope";
@@ -204,6 +205,15 @@ export function createCallFooterViewModel(
 
     hangup$: constant(callModel.hangup),
 
+    deafenEnabled$: muteAllAudioSetting.value$,
+    toggleDeafen$: scope.behavior(
+      muteAllAudioSetting.value$.pipe(
+        map((current) => (): void => {
+          muteAllAudioSetting.setValue(!current);
+        }),
+      ),
+    ),
+
     reactionIdentifier$: constant(reactionIdentifier),
     reactionData$: constant(
       reactionIdentifier !== undefined
@@ -265,6 +275,8 @@ export function createLobbyFooterViewModel(
       layoutMode: undefined,
       sharingScreen: false,
       audioOutputSwitcher: undefined,
+      deafenEnabled: false,
+      toggleDeafen: undefined,
       reactionIdentifier: undefined,
       reactionData: undefined,
       tileStoreGeneration: undefined,

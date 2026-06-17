@@ -24,6 +24,7 @@ import {
   SettingsButton,
   ReactionToggleButton,
   LoudspeakerButton,
+  DeafenButton,
   SettingsIconButton,
   type ReactionData,
 } from "../button";
@@ -68,6 +69,7 @@ export interface FooterActions {
   openSettings: (() => void) | undefined;
   /** Also controls if the hangup button is visible */
   hangup: (() => void) | undefined;
+  toggleDeafen: (() => void) | undefined;
 }
 // we do not use any ? optional properties so that the vm type is including all fields.
 export interface FooterState {
@@ -90,6 +92,8 @@ export interface FooterState {
   layoutMode: GridMode | undefined;
 
   sharingScreen: boolean;
+
+  deafenEnabled: boolean;
 
   /** Also controls if the audio output button is visible */
   audioOutputSwitcher: AudioOutputSwitcher | undefined;
@@ -134,6 +138,8 @@ export const CallFooter: FC<FooterProps> = ({ ref, children, vm }) => {
   const reactionIdentifier = useBehavior(vm.reactionIdentifier$);
   const reactionData = useBehavior(vm.reactionData$);
   const audioOutputSwitcher = useBehavior(vm.audioOutputSwitcher$);
+  const deafenEnabled = useBehavior(vm.deafenEnabled$);
+  const toggleDeafen = useBehavior(vm.toggleDeafen$);
   const hangup = useBehavior(vm.hangup$);
   const debugTileLayout = useBehavior(vm.debugTileLayout$);
   const tileStoreGeneration = useBehavior(vm.tileStoreGeneration$);
@@ -261,6 +267,18 @@ export const CallFooter: FC<FooterProps> = ({ ref, children, vm }) => {
   }, [audioOutputSwitcher, buttonSize]);
 
   if (audioOutputButton) buttons.push(audioOutputButton);
+
+  if (toggleDeafen) {
+    buttons.push(
+      <DeafenButton
+        size={buttonSize}
+        key="deafen"
+        enabled={deafenEnabled ?? false}
+        onClick={toggleDeafen}
+        data-testid="incall_deafen"
+      />,
+    );
+  }
 
   if (hangup)
     buttons.push(
