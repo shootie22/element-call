@@ -169,8 +169,8 @@
   "microphone_off": "Microphone off",
   "microphone_on": "Microphone on",
   "deafen_button_label": "Deafen",
-"undeafen_button_label": "Undeafen",
-"mute_microphone_button_label": "Mute microphone",
+  "undeafen_button_label": "Undeafen",
+  "mute_microphone_button_label": "Mute microphone",
   "participant_count_one": "{{count, number}}",
   "participant_count_other": "{{count, number}}",
   "qr_code": "QR Code",
@@ -261,6 +261,7 @@
     "expand": "Expand",
     "mute_for_me": "Mute for me",
     "muted_for_me": "Muted for me",
+    "reset_zoom": "Reset zoom",
     "screen_share_volume": "Screen share volume",
     "volume": "Volume",
     "waiting_for_media": "Waiting for media..."

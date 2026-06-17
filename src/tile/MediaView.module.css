@@ -24,11 +24,33 @@ Please see LICENSE in the repository root for full details.
   /* This transform is a no-op, but it forces Firefox to use a different
   rendering path, one that actually clips the corners of <video> elements into
   the intended rounded shape. We can remove this if Firefox stops being broken. */
-  transform: translate(0);
+  transform: translate(
+      var(--media-video-offset-x, 0),
+      var(--media-video-offset-y, 0)
+    )
+    scale(var(--media-video-zoom, 1));
+  transform-origin: center;
+  transition: transform 120ms ease-out;
 }
 
 .media.mirror video {
-  transform: scaleX(-1);
+  transform: translate(
+      var(--media-video-offset-x, 0),
+      var(--media-video-offset-y, 0)
+    )
+    scaleX(-1) scale(var(--media-video-zoom, 1));
+}
+
+.media[data-zoomed="true"] {
+  cursor: grab;
+}
+
+.media[data-panning="true"] {
+  cursor: grabbing;
+}
+
+.media[data-panning="true"] video {
+  transition: none;
 }
 
 .media[data-video-fit="cover"] video {
@@ -89,7 +111,7 @@ unconditionally select the container so we can use cqmin units */
   display: grid;
   grid-template-columns: 1fr auto;
   grid-template-rows: 1fr auto;
-  grid-template-areas: "status reactions" "nameTag button";
+  grid-template-areas: "status reactions" "nameTag actions";
   gap: var(--cpd-space-1x);
   place-items: start;
   contain: strict;
@@ -97,6 +119,10 @@ unconditionally select the container so we can use cqmin units */
 
 @media (prefers-reduced-motion) {
   .fg {
+    transition: none;
+  }
+
+  .media video {
     transition: none;
   }
 }
@@ -160,7 +186,17 @@ unconditionally select the container so we can use cqmin units */
   color: var(--cpd-color-icon-critical-primary);
 }
 
-.fg > button {
+.actionButtons {
+  grid-area: actions;
+  place-self: end;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: var(--cpd-space-1x);
+  min-inline-size: 0;
+}
+
+.actionButtons button {
   appearance: none;
   border: none;
   border-radius: var(--cpd-radius-pill-effect);
@@ -174,36 +210,40 @@ unconditionally select the container so we can use cqmin units */
     background-color 0.1s;
 }
 
-.fg:has(:focus-visible) > button,
-.fg > button[data-enabled="true"],
-.fg > button[data-state="open"] {
+.fg:has(:focus-visible) .actionButtons button,
+.actionButtons button[data-enabled="true"],
+.actionButtons button[data-state="open"] {
   opacity: 1;
 }
 
 @media (hover) {
-  .fg:hover > button {
+  .fg:hover .actionButtons button {
     opacity: 1;
   }
 
-  .fg > button:hover {
+  .actionButtons button:hover {
     background: var(--cpd-color-bg-action-primary-hovered);
   }
 }
 
-.fg > button:active {
+.actionButtons button:active {
   background: var(--cpd-color-bg-action-primary-pressed);
 }
 
-.fg > button[data-state="open"] {
+.actionButtons button[data-state="open"] {
   background: var(--cpd-color-bg-action-primary-pressed);
 }
 
-.fg > button > svg {
+.actionButtons button > svg {
   display: block;
   color: var(--cpd-color-icon-on-solid-primary);
 }
 
-.fg > button:first-of-type {
-  grid-area: button;
-  place-self: end;
+.resetZoomButton {
+  color: var(--cpd-color-text-on-solid-primary);
+  font: inherit;
+  font-size: var(--cpd-font-size-body-xs);
+  font-weight: var(--cpd-font-weight-medium);
+  line-height: var(--cpd-line-height-body-xs);
+  white-space: nowrap;
 }

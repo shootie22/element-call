@@ -13,6 +13,14 @@ import {
   type ReactNode,
   type ComponentType,
   type SVGAttributes,
+  type CSSProperties,
+  type MouseEvent,
+  type PointerEvent,
+  type WheelEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
 import { useTranslation } from "react-i18next";
 import classNames from "classnames";
@@ -31,6 +39,50 @@ import {
 import { type ReactionOption } from "../reactions";
 import { ReactionIndicator } from "../reactions/ReactionIndicator";
 import { RTCConnectionStats } from "../RTCConnectionStats";
+
+const DEFAULT_ZOOM = 1;
+const MAX_ZOOM = 12;
+const RESET_ZOOM_THRESHOLD = 1.02;
+const ZOOM_SENSITIVITY = 0.001;
+const MIN_PAN_DISTANCE = 2;
+const MOUSE_DRAG_POINTER_ID = -1;
+
+interface ZoomState {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+interface DragState {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  startOffsetX: number;
+  startOffsetY: number;
+  moved: boolean;
+}
+
+const defaultZoom = (): ZoomState => ({
+  scale: DEFAULT_ZOOM,
+  offsetX: 0,
+  offsetY: 0,
+});
+
+const clampOffset = (
+  scale: number,
+  offsetX: number,
+  offsetY: number,
+  width: number,
+  height: number,
+): Pick<ZoomState, "offsetX" | "offsetY"> => {
+  const maxOffsetX = (width * (scale - DEFAULT_ZOOM)) / 2;
+  const maxOffsetY = (height * (scale - DEFAULT_ZOOM)) / 2;
+
+  return {
+    offsetX: Math.min(maxOffsetX, Math.max(-maxOffsetX, offsetX)),
+    offsetY: Math.min(maxOffsetY, Math.max(-maxOffsetY, offsetY)),
+  };
+};
 
 interface Props extends ComponentProps<typeof animated.div> {
   className?: string;
@@ -88,13 +140,229 @@ export const MediaView: FC<Props> = ({
   videoStreamStats,
   rtcBackendIdentity,
   focusUrl,
+  onClick,
   ...props
 }) => {
   const { t } = useTranslation();
   const [handRaiseTimerVisible] = useSetting(showHandRaisedTimer);
   const [showConnectionStats] = useSetting(showConnectionStatsSetting);
+  const [zoom, setZoom] = useState<ZoomState>(defaultZoom);
+  const [panning, setPanning] = useState(false);
+  const drag = useRef<DragState | null>(null);
+  const suppressNextClick = useRef(false);
 
   const avatarSize = Math.round(Math.min(targetWidth, targetHeight) / 2);
+  const hasVideo = video?.publication !== undefined && videoEnabled;
+  const zoomed = zoom.scale !== DEFAULT_ZOOM;
+
+  const resetZoom = useCallback(() => {
+    setZoom(defaultZoom());
+  }, []);
+
+  useEffect(() => {
+    if (!hasVideo) resetZoom();
+  }, [hasVideo, resetZoom]);
+
+  const onWheel = useCallback(
+    (event: WheelEvent<HTMLDivElement>) => {
+      if (!hasVideo) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const rect = event.currentTarget.getBoundingClientRect();
+      const pointerX = event.clientX - rect.left - rect.width / 2;
+      const pointerY = event.clientY - rect.top - rect.height / 2;
+
+      setZoom((current) => {
+        const nextScale = Math.min(
+          MAX_ZOOM,
+          Math.max(
+            DEFAULT_ZOOM,
+            current.scale * Math.exp(-event.deltaY * ZOOM_SENSITIVITY),
+          ),
+        );
+
+        if (nextScale <= RESET_ZOOM_THRESHOLD) {
+          return defaultZoom();
+        }
+
+        const scaleRatio = nextScale / current.scale;
+        const offset = clampOffset(
+          nextScale,
+          pointerX - (pointerX - current.offsetX) * scaleRatio,
+          pointerY - (pointerY - current.offsetY) * scaleRatio,
+          rect.width,
+          rect.height,
+        );
+
+        return {
+          scale: nextScale,
+          ...offset,
+        };
+      });
+    },
+    [hasVideo],
+  );
+
+  const onPointerDown = useCallback(
+    (event: PointerEvent<HTMLDivElement>) => {
+      if (
+        drag.current !== null ||
+        !hasVideo ||
+        !zoomed ||
+        (event.button !== 0 && event.buttons !== 1) ||
+        (event.target as HTMLElement).closest("button")
+      ) {
+        return;
+      }
+
+      drag.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        startOffsetX: zoom.offsetX,
+        startOffsetY: zoom.offsetY,
+        moved: false,
+      };
+      setPanning(true);
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    },
+    [hasVideo, zoom, zoomed],
+  );
+
+  const onMouseDown = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      if (
+        drag.current !== null ||
+        !hasVideo ||
+        !zoomed ||
+        event.button !== 0 ||
+        (event.target as HTMLElement).closest("button")
+      ) {
+        return;
+      }
+
+      drag.current = {
+        pointerId: MOUSE_DRAG_POINTER_ID,
+        startX: event.clientX,
+        startY: event.clientY,
+        startOffsetX: zoom.offsetX,
+        startOffsetY: zoom.offsetY,
+        moved: false,
+      };
+      setPanning(true);
+      event.preventDefault();
+    },
+    [hasVideo, zoom, zoomed],
+  );
+
+  const onPointerMove = useCallback((event: PointerEvent<HTMLDivElement>) => {
+    const currentDrag = drag.current;
+    if (currentDrag === null || currentDrag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const deltaX = event.clientX - currentDrag.startX;
+    const deltaY = event.clientY - currentDrag.startY;
+    const moved =
+      Math.abs(deltaX) > MIN_PAN_DISTANCE ||
+      Math.abs(deltaY) > MIN_PAN_DISTANCE;
+    currentDrag.moved ||= moved;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    setZoom((current) => ({
+      scale: current.scale,
+      ...clampOffset(
+        current.scale,
+        currentDrag.startOffsetX + deltaX,
+        currentDrag.startOffsetY + deltaY,
+        rect.width,
+        rect.height,
+      ),
+    }));
+
+    event.preventDefault();
+  }, []);
+
+  const onMouseMove = useCallback((event: MouseEvent<HTMLDivElement>) => {
+    const currentDrag = drag.current;
+    if (
+      currentDrag === null ||
+      currentDrag.pointerId !== MOUSE_DRAG_POINTER_ID
+    ) {
+      return;
+    }
+
+    const deltaX = event.clientX - currentDrag.startX;
+    const deltaY = event.clientY - currentDrag.startY;
+    const moved =
+      Math.abs(deltaX) > MIN_PAN_DISTANCE ||
+      Math.abs(deltaY) > MIN_PAN_DISTANCE;
+    currentDrag.moved ||= moved;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    setZoom((current) => ({
+      scale: current.scale,
+      ...clampOffset(
+        current.scale,
+        currentDrag.startOffsetX + deltaX,
+        currentDrag.startOffsetY + deltaY,
+        rect.width,
+        rect.height,
+      ),
+    }));
+
+    event.preventDefault();
+  }, []);
+
+  const stopPanning = useCallback((event: PointerEvent<HTMLDivElement>) => {
+    const currentDrag = drag.current;
+    if (currentDrag === null || currentDrag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    suppressNextClick.current = currentDrag.moved;
+    drag.current = null;
+    setPanning(false);
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+  }, []);
+
+  const stopMousePanning = useCallback((event: MouseEvent<HTMLDivElement>) => {
+    const currentDrag = drag.current;
+    if (
+      currentDrag === null ||
+      currentDrag.pointerId !== MOUSE_DRAG_POINTER_ID
+    ) {
+      return;
+    }
+
+    suppressNextClick.current = currentDrag.moved;
+    drag.current = null;
+    setPanning(false);
+  }, []);
+
+  const onTileClick = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      if (suppressNextClick.current) {
+        suppressNextClick.current = false;
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+
+      onClick?.(event);
+    },
+    [onClick],
+  );
+
+  const videoStyle = {
+    display: hasVideo ? "block" : "none",
+    "--media-video-zoom": zoom.scale,
+    "--media-video-offset-x": `${zoom.offsetX}px`,
+    "--media-video-offset-y": `${zoom.offsetY}px`,
+  } as CSSProperties;
 
   const warnings = unencryptedWarning && (
     <Tooltip
@@ -120,9 +388,20 @@ export const MediaView: FC<Props> = ({
       })}
       style={style}
       ref={ref}
+      {...props}
       data-testid="videoTile"
       data-video-fit={videoFit}
-      {...props}
+      data-zoomed={zoomed}
+      data-panning={panning}
+      onWheel={onWheel}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={stopPanning}
+      onPointerCancel={stopPanning}
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMove}
+      onMouseUp={stopMousePanning}
+      onClick={onTileClick}
     >
       <div className={styles.bg}>
         <Avatar
@@ -143,7 +422,7 @@ export const MediaView: FC<Props> = ({
             // There's no reason for this to be focusable
             tabIndex={-1}
             disablePictureInPicture
-            style={{ display: video && videoEnabled ? "block" : "none" }}
+            style={videoStyle}
             data-testid="video"
           />
         )}
@@ -220,7 +499,22 @@ export const MediaView: FC<Props> = ({
         ) : (
           warnings
         )}
-        {primaryButton}
+        {(zoomed || primaryButton) && (
+          <div className={styles.actionButtons}>
+            {zoomed && (
+              <button
+                type="button"
+                className={styles.resetZoomButton}
+                onClick={resetZoom}
+                data-enabled="true"
+                tabIndex={focusable ? undefined : -1}
+              >
+                {t("video_tile.reset_zoom")}
+              </button>
+            )}
+            {primaryButton}
+          </div>
+        )}
       </div>
     </animated.div>
   );

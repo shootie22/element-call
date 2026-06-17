@@ -6,7 +6,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { describe, expect, it, test } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { axe } from "vitest-axe";
 import { TooltipProvider } from "@vector-im/compound-web";
 import {
@@ -47,6 +47,23 @@ describe("MediaView", () => {
     userId: "@alice:example.com",
     mxcAvatarUrl: undefined,
     focusable: true,
+  };
+
+  const mockTileBounds = (tile: HTMLElement): void => {
+    Object.defineProperty(tile, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({
+        x: 0,
+        y: 0,
+        left: 0,
+        top: 0,
+        right: 300,
+        bottom: 200,
+        width: 300,
+        height: 200,
+        toJSON: (): void => {},
+      }),
+    });
   };
 
   test("is accessible", async () => {
@@ -153,6 +170,174 @@ describe("MediaView", () => {
         screen.getByRole("img", { name: "@alice:example.com" }),
       ).toBeVisible();
       expect(screen.getByTestId("video")).not.toBeVisible();
+    });
+  });
+
+  describe("zoom", () => {
+    test("zooming in shows a reset button and applies video scale and offset", () => {
+      render(<MediaView {...baseProps} />);
+      const tile = screen.getByTestId("videoTile");
+      mockTileBounds(tile);
+
+      fireEvent.wheel(tile, { deltaY: -100, clientX: 75, clientY: 50 });
+
+      expect(screen.getByRole("button", { name: "Reset zoom" })).toBeVisible();
+      expect(
+        Number(
+          screen
+            .getByTestId("video")
+            .style.getPropertyValue("--media-video-zoom"),
+        ),
+      ).toBeGreaterThan(1);
+      expect(
+        screen
+          .getByTestId("video")
+          .style.getPropertyValue("--media-video-offset-x"),
+      ).not.toBe("0px");
+      expect(
+        screen
+          .getByTestId("video")
+          .style.getPropertyValue("--media-video-offset-y"),
+      ).not.toBe("0px");
+    });
+
+    test("reset button restores the default zoom", () => {
+      render(<MediaView {...baseProps} />);
+      const tile = screen.getByTestId("videoTile");
+      mockTileBounds(tile);
+
+      fireEvent.wheel(tile, { deltaY: -100, clientX: 75, clientY: 50 });
+      fireEvent.click(screen.getByRole("button", { name: "Reset zoom" }));
+
+      expect(
+        screen.queryByRole("button", { name: "Reset zoom" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen
+          .getByTestId("video")
+          .style.getPropertyValue("--media-video-zoom"),
+      ).toBe("1");
+      expect(
+        screen
+          .getByTestId("video")
+          .style.getPropertyValue("--media-video-offset-x"),
+      ).toBe("0px");
+      expect(
+        screen
+          .getByTestId("video")
+          .style.getPropertyValue("--media-video-offset-y"),
+      ).toBe("0px");
+    });
+
+    test("zooming out past the threshold resets to default", () => {
+      render(<MediaView {...baseProps} />);
+      const tile = screen.getByTestId("videoTile");
+      mockTileBounds(tile);
+
+      fireEvent.wheel(tile, { deltaY: -500, clientX: 75, clientY: 50 });
+      fireEvent.wheel(tile, { deltaY: 10_000, clientX: 75, clientY: 50 });
+
+      expect(
+        screen.queryByRole("button", { name: "Reset zoom" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen
+          .getByTestId("video")
+          .style.getPropertyValue("--media-video-zoom"),
+      ).toBe("1");
+      expect(
+        screen
+          .getByTestId("video")
+          .style.getPropertyValue("--media-video-offset-x"),
+      ).toBe("0px");
+      expect(
+        screen
+          .getByTestId("video")
+          .style.getPropertyValue("--media-video-offset-y"),
+      ).toBe("0px");
+    });
+
+    test("zoom resets when video is disabled", () => {
+      const { rerender } = render(<MediaView {...baseProps} />);
+      const tile = screen.getByTestId("videoTile");
+      mockTileBounds(tile);
+
+      fireEvent.wheel(tile, { deltaY: -100, clientX: 75, clientY: 50 });
+      expect(screen.getByRole("button", { name: "Reset zoom" })).toBeVisible();
+
+      rerender(<MediaView {...baseProps} videoEnabled={false} />);
+
+      expect(
+        screen.queryByRole("button", { name: "Reset zoom" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen
+          .getByTestId("video")
+          .style.getPropertyValue("--media-video-zoom"),
+      ).toBe("1");
+      expect(
+        screen
+          .getByTestId("video")
+          .style.getPropertyValue("--media-video-offset-x"),
+      ).toBe("0px");
+      expect(
+        screen
+          .getByTestId("video")
+          .style.getPropertyValue("--media-video-offset-y"),
+      ).toBe("0px");
+    });
+
+    test("does not zoom when no video is published", () => {
+      render(<MediaView {...baseProps} video={trackReferencePlaceholder} />);
+      const tile = screen.getByTestId("videoTile");
+      mockTileBounds(tile);
+
+      fireEvent.wheel(tile, { deltaY: -100, clientX: 75, clientY: 50 });
+
+      expect(
+        screen.queryByRole("button", { name: "Reset zoom" }),
+      ).not.toBeInTheDocument();
+    });
+
+    test("dragging a zoomed tile pans within tile bounds", () => {
+      render(<MediaView {...baseProps} />);
+      const tile = screen.getByTestId("videoTile");
+      const video = screen.getByTestId("video");
+      mockTileBounds(tile);
+
+      fireEvent.wheel(tile, { deltaY: -2000, clientX: 150, clientY: 100 });
+      const scale = Number(video.style.getPropertyValue("--media-video-zoom"));
+
+      fireEvent.mouseDown(tile, {
+        button: 0,
+        clientX: 150,
+        clientY: 100,
+      });
+      fireEvent.mouseMove(tile, {
+        clientX: 10_000,
+        clientY: 10_000,
+      });
+      fireEvent.mouseUp(tile, {
+        clientX: 10_000,
+        clientY: 10_000,
+      });
+
+      expect(
+        parseFloat(video.style.getPropertyValue("--media-video-offset-x")),
+      ).toBeCloseTo((300 * (scale - 1)) / 2);
+      expect(
+        parseFloat(video.style.getPropertyValue("--media-video-offset-y")),
+      ).toBeCloseTo((200 * (scale - 1)) / 2);
+    });
+
+    test("is accessible while zoomed", async () => {
+      const { container } = render(<MediaView {...baseProps} />);
+      const tile = screen.getByTestId("videoTile");
+      mockTileBounds(tile);
+
+      fireEvent.wheel(tile, { deltaY: -100, clientX: 75, clientY: 50 });
+
+      expect(await axe(container)).toHaveNoViolations();
     });
   });
 });

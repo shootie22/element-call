@@ -8,6 +8,7 @@ Please see LICENSE in the repository root for full details.
 import {
   type ComponentProps,
   type FC,
+  type ReactNode,
   type Ref,
   type RefAttributes,
   useCallback,
@@ -69,6 +70,7 @@ interface SpotlightItemBaseProps {
   showNameTags: boolean;
   focusable: boolean;
   onClick?: () => void;
+  primaryButton?: ReactNode;
   "aria-hidden"?: boolean;
 }
 
@@ -254,6 +256,7 @@ interface SpotlightItemProps {
    */
   snap: boolean;
   onFocusMedia: ((mediaId: string) => void) | null;
+  primaryButton?: ReactNode;
   "aria-hidden"?: boolean;
 }
 
@@ -267,6 +270,7 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
   intersectionObserver$,
   snap,
   onFocusMedia,
+  primaryButton,
   "aria-hidden": ariaHidden,
 }) => {
   const ourRef = useRef<HTMLDivElement | null>(null);
@@ -303,6 +307,7 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
     showNameTags,
     focusable,
     onClick,
+    primaryButton,
     "aria-hidden": ariaHidden,
   };
 
@@ -493,6 +498,35 @@ export const SpotlightTile: FC<Props> = ({
   }, [latestVisibleId, latestMedia, setScrollToId]);
 
   const ToggleExpandIcon = expanded ? CollapseIcon : ExpandIcon;
+  const spotlightButtons = (
+    <>
+      {visibleMedia?.type === "screen share" && !visibleMedia.local && (
+        <ScreenShareVolumeButton vm={visibleMedia} />
+      )}
+      {platform === "desktop" && (
+        <button
+          className={classNames(styles.expand)}
+          aria-label={"maximise"}
+          onClick={onToggleFullscreen}
+          tabIndex={focusable ? undefined : -1}
+        >
+          <FullScreenIcon aria-hidden width={20} height={20} />
+        </button>
+      )}
+      {onToggleExpanded && (
+        <button
+          className={classNames(styles.expand)}
+          aria-label={
+            expanded ? t("video_tile.collapse") : t("video_tile.expand")
+          }
+          onClick={onToggleExpanded}
+          tabIndex={focusable ? undefined : -1}
+        >
+          <ToggleExpandIcon aria-hidden width={20} height={20} />
+        </button>
+      )}
+    </>
+  );
 
   return (
     <animated.div
@@ -532,38 +566,19 @@ export const SpotlightTile: FC<Props> = ({
             // that we want to bring into view
             snap={!multiFeed && (scrollToId === null || scrollToId === vm.id)}
             onFocusMedia={onFocusMedia}
+            primaryButton={
+              !multiFeed && vm.id === (scrollToId ?? visibleId)
+                ? spotlightButtons
+                : undefined
+            }
             aria-hidden={!multiFeed && (scrollToId ?? visibleId) !== vm.id}
           />
         ))}
       </div>
 
-      <div className={styles.bottomRightButtons}>
-        {visibleMedia?.type === "screen share" && !visibleMedia.local && (
-          <ScreenShareVolumeButton vm={visibleMedia} />
-        )}
-        {platform === "desktop" && (
-          <button
-            className={classNames(styles.expand)}
-            aria-label={"maximise"}
-            onClick={onToggleFullscreen}
-            tabIndex={focusable ? undefined : -1}
-          >
-            <FullScreenIcon aria-hidden width={20} height={20} />
-          </button>
-        )}
-        {onToggleExpanded && (
-          <button
-            className={classNames(styles.expand)}
-            aria-label={
-              expanded ? t("video_tile.collapse") : t("video_tile.expand")
-            }
-            onClick={onToggleExpanded}
-            tabIndex={focusable ? undefined : -1}
-          >
-            <ToggleExpandIcon aria-hidden width={20} height={20} />
-          </button>
-        )}
-      </div>
+      {multiFeed && (
+        <div className={styles.bottomRightButtons}>{spotlightButtons}</div>
+      )}
 
       {canGoToNext && (
         <button
