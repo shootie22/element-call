@@ -87,26 +87,26 @@ exports[`InCallView > rendering > renders 1`] = `
       class="scrollingGrid grid"
     >
       <div
-        class="layer"
+        class="scrolling"
+        style="--gap: 20px; --width: NaNpx; --height: NaNpx;"
       >
         <div
-          class="container slot"
+          class="slot slot"
+          data-id="0"
+        />
+        <div
+          class="slot slot"
           data-id="1"
-        >
-          <div
-            class="slot local slot"
-            data-block-alignment="start"
-            data-id="0"
-            data-inline-alignment="end"
-          />
-        </div>
+        />
       </div>
     </div>
     <div
       class="fixedGrid grid"
       style="inset-block-start: NaNpx;"
     >
-      <div />
+      <div
+        class="fixed"
+      />
     </div>
     <div
       class="bg animate"

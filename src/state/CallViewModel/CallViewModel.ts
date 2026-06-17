@@ -93,9 +93,6 @@ import {
   type GridLayoutMedia,
   type Layout,
   type LayoutMedia,
-  type OneOnOneLandscapeLayoutMedia,
-  type OneOnOnePortraitLayoutMedia,
-  type SpotlightExpandedLayoutMedia,
   type SpotlightLandscapeLayoutMedia,
   type SpotlightPortraitLayoutMedia,
 } from "../layout-types.ts";
@@ -151,7 +148,6 @@ import { type ScreenShareViewModel } from "../media/ScreenShareViewModel.ts";
 import { type UserMediaViewModel } from "../media/UserMediaViewModel.ts";
 import { type MediaViewModel } from "../media/MediaViewModel.ts";
 import { type LocalUserMediaViewModel } from "../media/LocalUserMediaViewModel.ts";
-import { type RemoteUserMediaViewModel } from "../media/RemoteUserMediaViewModel.ts";
 import {
   createRingingMedia,
   type RingingMediaViewModel,
@@ -1160,98 +1156,6 @@ export function createCallViewModel$(
       grid: feeds.filter((feed) => !spotlight.includes(feed)),
     }));
 
-  const spotlightExpandedLayoutMedia$ = (
-    edgeToEdge: boolean,
-  ): Observable<SpotlightExpandedLayoutMedia> =>
-    spotlightAndPip$.pipe(
-      switchMap(({ spotlight, pip$ }) =>
-        pip$.pipe(
-          map((pip) => ({
-            type: "spotlight-expanded" as const,
-            edgeToEdge,
-            spotlight,
-            pip: pip ?? undefined,
-          })),
-        ),
-      ),
-    );
-
-  const oneOnOneLayoutMedia$: Observable<{
-    local: LocalUserMediaViewModel;
-    remote: UserMediaViewModel | RingingMediaViewModel;
-  } | null> = combineLatest([userMedia$, screenShares$]).pipe(
-    switchMap(([userMedia, screenShares]) => {
-      // One-on-one layout only supports 2 user media, no screen shares
-      if (userMedia.length <= 2 && screenShares.length === 0) {
-        const local = userMedia.find(
-          (vm): vm is WrappedUserMediaViewModel & LocalUserMediaViewModel =>
-            vm.type === "user" && vm.local,
-        );
-
-        if (local !== undefined) {
-          const remote = userMedia.find(
-            (vm): vm is WrappedUserMediaViewModel & RemoteUserMediaViewModel =>
-              vm.type === "user" && !vm.local,
-          );
-
-          if (remote !== undefined) return of({ local, remote });
-
-          // If there's no other user media in the call (could still happen in
-          // this branch due to the duplicate tiles option), we could possibly
-          // show ringing media instead
-          if (userMedia.length === 1)
-            return ringingMedia$.pipe(
-              map((ringingMedia) => {
-                return ringingMedia.length === 1
-                  ? {
-                      local,
-                      remote: ringingMedia[0],
-                    }
-                  : null;
-              }),
-            );
-        }
-      }
-
-      return of(null);
-    }),
-  );
-
-  const oneOnOneLandscapeLayoutMedia$: Observable<OneOnOneLandscapeLayoutMedia | null> =
-    oneOnOneLayoutMedia$.pipe(
-      map((media) => {
-        if (media === null) return null;
-        return media.remote.type === "ringing"
-          ? {
-              type: "one-on-one-landscape" as const,
-              edgeToEdge: false,
-              spotlight: media.local,
-              pip: media.remote,
-            }
-          : {
-              type: "one-on-one-landscape" as const,
-              edgeToEdge: false,
-              spotlight: media.remote,
-              pip: media.local,
-            };
-      }),
-    );
-
-  const oneOnOnePortraitLayoutMedia$: Observable<OneOnOnePortraitLayoutMedia | null> =
-    oneOnOneLayoutMedia$.pipe(
-      switchMap((media) => {
-        if (media === null) return of(null);
-        return media.local.videoEnabled$.pipe(
-          map((videoEnabled) => ({
-            type: "one-on-one-portrait" as const,
-            edgeToEdge: true as const,
-            spotlight: media.remote,
-            pip: videoEnabled ? media.local : undefined,
-          })),
-        );
-      }),
-    );
-
   const pipLayoutMedia$: Observable<LayoutMedia> = spotlight$.pipe(
     map((spotlight) => ({
       type: "pip",
@@ -1299,35 +1203,20 @@ export function createCallViewModel$(
               switchMap((gridMode) => {
                 switch (gridMode) {
                   case "grid":
-                    return oneOnOneLandscapeLayoutMedia$.pipe(
-                      switchMap((oneOnOne) =>
-                        oneOnOne === null ? gridLayoutMedia$ : of(oneOnOne),
-                      ),
-                    );
+                    return gridLayoutMedia$;
                   case "spotlight":
-                    return spotlightExpanded$.pipe(
-                      switchMap((expanded) =>
-                        expanded
-                          ? spotlightExpandedLayoutMedia$(false)
-                          : spotlightLandscapeLayoutMedia$(false),
-                      ),
-                    );
+                    return spotlightLandscapeLayoutMedia$(false);
                 }
               }),
             );
           case "narrow":
-            return oneOnOnePortraitLayoutMedia$.pipe(
-              switchMap((oneOnOne) =>
-                oneOnOne === null
-                  ? combineLatest([feeds$, spotlight$], (grid, spotlight) =>
-                      grid.length > smallMobileCallThreshold ||
-                      spotlight.some((vm) => vm.type === "screen share")
-                        ? spotlightPortraitLayoutMedia$
-                        : gridLayoutMedia$,
-                    ).pipe(switchAll())
-                  : of(oneOnOne),
-              ),
-            );
+            return combineLatest([feeds$, spotlight$], (grid, spotlight) =>
+              grid.length > smallMobileCallThreshold ||
+              spotlight.some((vm) => vm.type === "screen share")
+                ? spotlightPortraitLayoutMedia$
+                : gridLayoutMedia$,
+            ).pipe(switchAll());
+
           case "flat":
             return gridMode$.pipe(
               switchMap((gridMode) => {
@@ -1337,7 +1226,7 @@ export function createCallViewModel$(
                     // this window mode.
                     return spotlightLandscapeLayoutMedia$(true);
                   case "spotlight":
-                    return spotlightExpandedLayoutMedia$(true);
+                    return spotlightLandscapeLayoutMedia$(true);
                 }
               }),
             );
