@@ -15,7 +15,6 @@ import {
 import svgrPlugin from "vite-plugin-svgr";
 import { createHtmlPlugin } from "vite-plugin-html";
 
-import { codecovVitePlugin } from "@codecov/vite-plugin";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import wasm from "vite-plugin-wasm";
@@ -41,11 +40,6 @@ export const vitePluginsConfig = ({
         // example, to make tooltips on icons work
         ref: true,
       },
-    }),
-    codecovVitePlugin({
-      enableBundleAnalysis: process.env.CODECOV_TOKEN !== undefined,
-      bundleName: "element-call",
-      uploadToken: process.env.CODECOV_TOKEN,
     }),
   ];
 
