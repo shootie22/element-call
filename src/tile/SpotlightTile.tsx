@@ -68,6 +68,7 @@ interface SpotlightItemBaseProps {
   mxcAvatarUrl: string | undefined;
   showNameTags: boolean;
   focusable: boolean;
+  onClick?: () => void;
   "aria-hidden"?: boolean;
 }
 
@@ -252,6 +253,7 @@ interface SpotlightItemProps {
    * Whether this item should act as a scroll snapping point.
    */
   snap: boolean;
+  onFocusMedia: ((mediaId: string) => void) | null;
   "aria-hidden"?: boolean;
 }
 
@@ -264,6 +266,7 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
   focusable,
   intersectionObserver$,
   snap,
+  onFocusMedia,
   "aria-hidden": ariaHidden,
 }) => {
   const ourRef = useRef<HTMLDivElement | null>(null);
@@ -271,6 +274,7 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
   const ref = useMergedRefs(ourRef, theirRef);
   const displayName = useBehavior(vm.displayName$);
   const mxcAvatarUrl = useBehavior(vm.mxcAvatarUrl$);
+  const onClick = useCallback(() => onFocusMedia?.(vm.id), [onFocusMedia, vm]);
 
   // Hook this item up to the intersection observer
   useEffect(() => {
@@ -298,6 +302,7 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
     mxcAvatarUrl,
     showNameTags,
     focusable,
+    onClick,
     "aria-hidden": ariaHidden,
   };
 
@@ -387,6 +392,7 @@ interface Props {
   showIndicators: boolean;
   showNameTags: boolean;
   focusable: boolean;
+  onFocusMedia: ((mediaId: string) => void) | null;
   className?: string;
   style?: ComponentProps<typeof animated.div>["style"];
 }
@@ -401,6 +407,7 @@ export const SpotlightTile: FC<Props> = ({
   showIndicators,
   showNameTags,
   focusable = true,
+  onFocusMedia,
   className,
   style,
 }) => {
@@ -414,8 +421,10 @@ export const SpotlightTile: FC<Props> = ({
   const latestVisibleId = useLatest(visibleId);
   const visibleIndex = media.findIndex((vm) => vm.id === visibleId);
   const visibleMedia = media.at(visibleIndex);
-  const canGoBack = visibleIndex > 0;
-  const canGoToNext = visibleIndex !== -1 && visibleIndex < media.length - 1;
+  const multiFeed = media.length > 1;
+  const canGoBack = !multiFeed && visibleIndex > 0;
+  const canGoToNext =
+    !multiFeed && visibleIndex !== -1 && visibleIndex < media.length - 1;
 
   const isFullscreen = useCallback((): boolean => {
     const rootElement = document.body;
@@ -503,7 +512,11 @@ export const SpotlightTile: FC<Props> = ({
           <ChevronLeftIcon aria-hidden width={24} height={24} />
         </button>
       )}
-      <div className={styles.contents}>
+      <div
+        className={classNames(styles.contents, {
+          [styles.multiFeed]: multiFeed,
+        })}
+      >
         {media.map((vm) => (
           <SpotlightItem
             key={vm.id}
@@ -517,8 +530,9 @@ export const SpotlightTile: FC<Props> = ({
             // when the previous/next buttons are clicked: we temporarily
             // remove all scroll snap points except for just the one media
             // that we want to bring into view
-            snap={scrollToId === null || scrollToId === vm.id}
-            aria-hidden={(scrollToId ?? visibleId) !== vm.id}
+            snap={!multiFeed && (scrollToId === null || scrollToId === vm.id)}
+            onFocusMedia={onFocusMedia}
+            aria-hidden={!multiFeed && (scrollToId ?? visibleId) !== vm.id}
           />
         ))}
       </div>
@@ -561,7 +575,7 @@ export const SpotlightTile: FC<Props> = ({
           <ChevronRightIcon aria-hidden width={24} height={24} />
         </button>
       )}
-      {!expanded && (
+      {!expanded && !multiFeed && (
         <div
           className={classNames(styles.indicators, {
             [styles.show]: showIndicators && media.length > 1,

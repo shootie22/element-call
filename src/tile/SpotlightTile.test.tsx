@@ -6,7 +6,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { test, expect, vi } from "vitest";
-import { act, isInaccessible, render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { axe } from "vitest-axe";
 import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@vector-im/compound-web";
@@ -57,6 +57,7 @@ test("SpotlightTile is accessible", async () => {
 
   const user = userEvent.setup();
   const toggleExpanded = vi.fn();
+  const focusMedia = vi.fn();
   const { container } = render(
     <SpotlightTile
       vm={new SpotlightTileViewModel(constant([vm1, vm2]), constant(false))}
@@ -67,22 +68,18 @@ test("SpotlightTile is accessible", async () => {
       showIndicators
       showNameTags
       focusable={true}
+      onFocusMedia={focusMedia}
     />,
   );
 
   expect(await axe(container)).toHaveNoViolations();
-  // Alice should be in the spotlight, with her name and avatar on the
-  // first page
+  // Alice and Bob should both be visible in the multi-feed spotlight grid
   screen.getByText("Alice");
-  const aliceAvatar = screen.getByRole("img");
-  expect(screen.queryByRole("button", { name: "common.back" })).toBe(null);
-  // Bob should be out of the spotlight, and therefore invisible
-  expect(isInaccessible(screen.getByText("Bob"))).toBe(true);
-  // Now navigate to Bob
-  await user.click(screen.getByRole("button", { name: "Next" }));
   screen.getByText("Bob");
-  expect(screen.getByRole("img")).not.toBe(aliceAvatar);
-  expect(isInaccessible(screen.getByText("Alice"))).toBe(true);
+  expect(screen.queryByRole("button", { name: "common.back" })).toBe(null);
+  expect(screen.queryByRole("button", { name: "common.next" })).toBe(null);
+  await user.click(screen.getByText("Bob"));
+  expect(focusMedia).toHaveBeenCalledWith(vm2.id);
   // Can toggle whether the tile is expanded
   await user.click(screen.getByRole("button", { name: "Expand" }));
   expect(toggleExpanded).toHaveBeenCalled();
@@ -109,6 +106,7 @@ test("Screen share volume UI is shown when screen share has audio", async () => 
         showIndicators
         showNameTags
         focusable
+        onFocusMedia={vi.fn()}
       />
     </TooltipProvider>,
   );
@@ -139,6 +137,7 @@ test("Screen share volume UI is hidden when screen share has no audio", async ()
       showIndicators
       showNameTags
       focusable
+      onFocusMedia={vi.fn()}
     />,
   );
 
@@ -176,6 +175,7 @@ test("SpotlightTile displays ringing media", async () => {
       showIndicators
       showNameTags
       focusable={true}
+      onFocusMedia={vi.fn()}
     />,
   );
 

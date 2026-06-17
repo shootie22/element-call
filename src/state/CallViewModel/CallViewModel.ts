@@ -347,6 +347,8 @@ export interface CallViewModel {
   toggleSpotlightExpanded$: Behavior<(() => void) | null>;
   gridMode$: Behavior<GridMode>;
   setGridMode: (value: GridMode) => void;
+  focusedMediaId$: Behavior<string | null>;
+  focusMedia: (mediaId: string | null) => void;
 
   // header/footer visibility
   showHeader$: Behavior<boolean>;
@@ -960,6 +962,45 @@ export function createCallViewModel$(
     ),
   );
 
+  const feeds$ = scope.behavior<MediaViewModel[]>(
+    combineLatest([grid$, screenShares$], (grid, screenShares) => {
+      const remainingScreenShares = new Set(screenShares);
+      const feeds: MediaViewModel[] = [];
+
+      for (const userMedia of grid) {
+        feeds.push(userMedia);
+
+        for (const screenShare of screenShares) {
+          if (screenShare.id.startsWith(`${userMedia.id}:`)) {
+            feeds.push(screenShare);
+            remainingScreenShares.delete(screenShare);
+          }
+        }
+      }
+
+      feeds.push(...remainingScreenShares);
+      return feeds;
+    }),
+  );
+
+  const focusedMediaIdSubject$ = new BehaviorSubject<string | null>(null);
+  const focusedMediaId$ = scope.behavior(focusedMediaIdSubject$);
+  const focusMedia = (mediaId: string | null): void => {
+    focusedMediaIdSubject$.next(mediaId);
+  };
+  const focusedMedia$ = scope.behavior<MediaViewModel | undefined>(
+    combineLatest([feeds$, focusedMediaId$], (feeds, focusedMediaId) =>
+      focusedMediaId === null
+        ? undefined
+        : feeds.find((media) => media.id === focusedMediaId),
+    ),
+  );
+
+  focusedMedia$.pipe(scope.bind()).subscribe((focusedMedia) => {
+    if (focusedMedia === undefined && focusedMediaIdSubject$.value !== null)
+      focusedMediaIdSubject$.next(null);
+  });
+
   /**
    * Local user media suitable for displaying in a PiP (undefined if not found
    * or if user prefers to not see themselves).
@@ -993,16 +1034,35 @@ export function createCallViewModel$(
         return screenShares$.pipe(
           switchMap((screenShares) => {
             if (screenShares.length > 0)
-              return of({ spotlight: screenShares, pip$: spotlightSpeaker$ });
+              return focusedMedia$.pipe(
+                map((focusedMedia) => ({
+                  spotlight:
+                    focusedMedia === undefined ? screenShares : [focusedMedia],
+                  pip$: spotlightSpeaker$,
+                })),
+              );
 
-            return spotlightSpeaker$.pipe(
-              map((speaker) => ({
-                spotlight: speaker ? [speaker] : [],
-                // Hide PiP if redundant (i.e. if local user is already in spotlight)
-                pip$: localUserMediaForPip$.pipe(
-                  map((m) => (m === speaker ? undefined : m)),
-                ),
-              })),
+            return focusedMedia$.pipe(
+              switchMap((focusedMedia) => {
+                if (focusedMedia !== undefined)
+                  return of({
+                    spotlight: [focusedMedia],
+                    // Hide PiP if redundant (i.e. if local user is already in spotlight)
+                    pip$: localUserMediaForPip$.pipe(
+                      map((m) => (m === focusedMedia ? undefined : m)),
+                    ),
+                  });
+
+                return spotlightSpeaker$.pipe(
+                  map((speaker) => ({
+                    spotlight: speaker ? [speaker] : [],
+                    // Hide PiP if redundant (i.e. if local user is already in spotlight)
+                    pip$: localUserMediaForPip$.pipe(
+                      map((m) => (m === speaker ? undefined : m)),
+                    ),
+                  })),
+                );
+              }),
             );
           }),
         );
@@ -1018,10 +1078,8 @@ export function createCallViewModel$(
   );
 
   const hasRemoteScreenShares$ = scope.behavior<boolean>(
-    spotlight$.pipe(
-      map((spotlight) =>
-        spotlight.some((vm) => vm.type === "screen share" && !vm.local),
-      ),
+    screenShares$.pipe(
+      map((screenShares) => screenShares.some((vm) => !vm.local)),
     ),
   );
 
@@ -1067,20 +1125,19 @@ export function createCallViewModel$(
     spotlightExpandedToggle$,
   );
 
-  const { setGridMode, gridMode$ } = createLayoutModeSwitch(
-    scope,
-    windowMode$,
-    hasRemoteScreenShares$,
-  );
+  const { setGridMode: setGridModeFromSwitch, gridMode$ } =
+    createLayoutModeSwitch(scope, windowMode$, hasRemoteScreenShares$);
+  const setGridMode = (value: GridMode): void => {
+    if (value === "grid") focusMedia(null);
+    setGridModeFromSwitch(value);
+  };
 
   const gridLayoutMedia$: Observable<GridLayoutMedia> = combineLatest(
-    [grid$, spotlight$],
-    (grid, spotlight) => ({
+    [feeds$],
+    (grid) => ({
       type: "grid",
       edgeToEdge: false,
-      spotlight: spotlight.some((vm) => vm.type === "screen share")
-        ? spotlight
-        : undefined,
+      spotlight: undefined,
       grid,
     }),
   );
@@ -1088,19 +1145,19 @@ export function createCallViewModel$(
   const spotlightLandscapeLayoutMedia$ = (
     edgeToEdge: boolean,
   ): Observable<SpotlightLandscapeLayoutMedia> =>
-    combineLatest([grid$, spotlight$], (grid, spotlight) => ({
+    combineLatest([feeds$, spotlight$], (feeds, spotlight) => ({
       type: "spotlight-landscape",
       edgeToEdge,
       spotlight,
-      grid,
+      grid: feeds.filter((feed) => !spotlight.includes(feed)),
     }));
 
   const spotlightPortraitLayoutMedia$: Observable<SpotlightPortraitLayoutMedia> =
-    combineLatest([grid$, spotlight$], (grid, spotlight) => ({
+    combineLatest([feeds$, spotlight$], (feeds, spotlight) => ({
       type: "spotlight-portrait",
       edgeToEdge: false,
       spotlight,
-      grid,
+      grid: feeds.filter((feed) => !spotlight.includes(feed)),
     }));
 
   const spotlightExpandedLayoutMedia$ = (
@@ -1262,7 +1319,7 @@ export function createCallViewModel$(
             return oneOnOnePortraitLayoutMedia$.pipe(
               switchMap((oneOnOne) =>
                 oneOnOne === null
-                  ? combineLatest([grid$, spotlight$], (grid, spotlight) =>
+                  ? combineLatest([feeds$, spotlight$], (grid, spotlight) =>
                       grid.length > smallMobileCallThreshold ||
                       spotlight.some((vm) => vm.type === "screen share")
                         ? spotlightPortraitLayoutMedia$
@@ -1773,6 +1830,8 @@ export function createCallViewModel$(
     toggleSpotlightExpanded$: toggleSpotlightExpanded$,
     gridMode$: gridMode$,
     setGridMode: setGridMode,
+    focusedMediaId$: focusedMediaId$,
+    focusMedia,
     layout$: layout$,
     localMatrixLivekitMember$,
     matrixLivekitMembers$: scope.behavior(

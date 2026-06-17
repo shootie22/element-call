@@ -79,6 +79,7 @@ test("GridTile is accessible", async () => {
         showSpeakingIndicators
         showNameTags
         focusable
+        onFocusMedia={null}
       />
     </ReactionsSenderProvider>,
   );
@@ -112,6 +113,7 @@ test("GridTile displays ringing media", async () => {
         showSpeakingIndicators
         showNameTags
         focusable
+        onFocusMedia={null}
       />
     </ReactionsSenderProvider>,
   );

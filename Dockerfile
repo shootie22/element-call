@@ -13,6 +13,9 @@ WORKDIR /build/dist/assets
 RUN gzip -k ../index.html *.js *.map *.css *.wasm *-app-*.json
 
 FROM nginxinc/nginx-unprivileged:alpine-slim
+LABEL org.opencontainers.image.source=https://github.com/shootie22/element-call
+LABEL org.opencontainers.image.description="Element Call web app"
+LABEL org.opencontainers.image.licenses="AGPL-3.0-only OR LicenseRef-Element-Commercial"
 COPY --from=builder /build/dist /app
 COPY config/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 8080

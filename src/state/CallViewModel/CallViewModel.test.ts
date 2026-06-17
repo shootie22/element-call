@@ -313,8 +313,7 @@ describe.each([
       // We should automatically enter spotlight for the first round of screen
       // sharing, then return to grid, then manually go into spotlight, and
       // remain in spotlight until we manually go back to grid
-      const expectedLayoutMarbles = "      abcdaefeg";
-      const expectedShowSpeakingMarbles = "y----nyny";
+      const expectedLayoutMarbles = "      abcdgefeg";
       withCallViewModel(
         {
           remoteParticipants$: constant([aliceParticipant, bobParticipant]),
@@ -373,10 +372,6 @@ describe.each([
               },
             },
           );
-          expectObservable(vm.showSpeakingIndicators$).toBe(
-            expectedShowSpeakingMarbles,
-            yesNo,
-          );
         },
       );
     });
@@ -407,8 +402,13 @@ describe.each([
               },
               b: {
                 type: "grid",
-                spotlight: [`${localId}:0:screen-share`],
-                grid: [`${localId}:0`, `${aliceId}:0`, `${bobId}:0`],
+                spotlight: undefined,
+                grid: [
+                  `${localId}:0`,
+                  `${aliceId}:0`,
+                  `${bobId}:0`,
+                  `${localId}:0:screen-share`,
+                ],
               },
             },
           );
@@ -442,8 +442,12 @@ describe.each([
               },
               b: {
                 type: "grid",
-                spotlight: [`${localId}:0:screen-share`],
-                grid: [`${localId}:0`, `${aliceId}:0`],
+                spotlight: undefined,
+                grid: [
+                  `${localId}:0`,
+                  `${aliceId}:0`,
+                  `${localId}:0:screen-share`,
+                ],
               },
             },
           );

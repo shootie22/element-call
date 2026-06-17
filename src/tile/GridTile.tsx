@@ -24,6 +24,7 @@ import {
   MicOffIcon,
   OverflowHorizontalIcon,
   VolumeOnIcon,
+  VolumeOnSolidIcon,
   VolumeOffIcon,
   VisibilityOnIcon,
   UserProfileIcon,
@@ -53,6 +54,9 @@ import { type LocalUserMediaViewModel } from "../state/media/LocalUserMediaViewM
 import { type RemoteUserMediaViewModel } from "../state/media/RemoteUserMediaViewModel";
 import { type UserMediaViewModel } from "../state/media/UserMediaViewModel";
 import { type RingingMediaViewModel } from "../state/media/RingingMediaViewModel";
+import { type ScreenShareViewModel } from "../state/media/ScreenShareViewModel";
+import { type RemoteScreenShareViewModel } from "../state/media/RemoteScreenShareViewModel";
+import { constant } from "../state/Behavior";
 
 interface TileProps {
   ref?: Ref<HTMLDivElement>;
@@ -64,6 +68,7 @@ interface TileProps {
   mxcAvatarUrl: string | undefined;
   showNameTags: boolean;
   focusable: boolean;
+  onFocusMedia: ((mediaId: string) => void) | null;
 }
 
 interface RingingMediaTileProps extends TileProps {
@@ -73,6 +78,7 @@ interface RingingMediaTileProps extends TileProps {
 const RingingMediaTile: FC<RingingMediaTileProps> = ({
   vm,
   className,
+  onFocusMedia: _onFocusMedia,
   ...props
 }) => {
   const { t } = useTranslation();
@@ -127,6 +133,7 @@ const UserMediaTile: FC<UserMediaTileProps> = ({
   displayName,
   mxcAvatarUrl,
   focusable,
+  onFocusMedia,
   targetWidth,
   targetHeight,
   ...props
@@ -185,6 +192,7 @@ const UserMediaTile: FC<UserMediaTileProps> = ({
     : undefined;
 
   const showSpeaking = showSpeakingIndicators && speaking;
+  const onClick = useCallback(() => onFocusMedia?.(vm.id), [onFocusMedia, vm]);
 
   const tile = (
     <MediaView
@@ -210,6 +218,7 @@ const UserMediaTile: FC<UserMediaTileProps> = ({
       displayName={displayName}
       mxcAvatarUrl={mxcAvatarUrl}
       focusable={focusable}
+      onClick={onClick}
       primaryButton={
         primaryButton ?? (
           <Menu
@@ -253,6 +262,116 @@ const UserMediaTile: FC<UserMediaTileProps> = ({
 };
 
 UserMediaTile.displayName = "UserMediaTile";
+
+interface ScreenShareMediaTileProps extends TileProps {
+  vm: ScreenShareViewModel;
+}
+
+const RemoteScreenShareVolumeButton: FC<{
+  vm: RemoteScreenShareViewModel;
+  focusable: boolean;
+}> = ({ vm, focusable }) => {
+  const { t } = useTranslation();
+  const audioEnabled = useBehavior(vm.audioEnabled$);
+  const playbackMuted = useBehavior(vm.playbackMuted$);
+  const playbackVolume = useBehavior(vm.playbackVolume$);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const VolumeIcon = playbackMuted ? VolumeOffIcon : VolumeOnIcon;
+  const VolumeSolidIcon = playbackMuted
+    ? VolumeOffSolidIcon
+    : VolumeOnSolidIcon;
+  const onMuteButtonClick = useCallback(() => vm.togglePlaybackMuted(), [vm]);
+  const onVolumeChange = useCallback(
+    (v: number) => vm.adjustPlaybackVolume(v),
+    [vm],
+  );
+  const onVolumeCommit = useCallback(() => vm.commitPlaybackVolume(), [vm]);
+
+  return (
+    audioEnabled && (
+      <Menu
+        open={menuOpen}
+        onOpenChange={setMenuOpen}
+        title={t("video_tile.screen_share_volume")}
+        trigger={
+          <button
+            aria-label={t("video_tile.screen_share_volume")}
+            tabIndex={focusable ? undefined : -1}
+          >
+            <VolumeSolidIcon aria-hidden width={20} height={20} />
+          </button>
+        }
+        side="left"
+        align="start"
+      >
+        <MenuItem
+          as="div"
+          className={styles.volumeMenuItem}
+          onSelect={null}
+          label={null}
+          hideChevron={true}
+        >
+          <button className={styles.menuMuteButton} onClick={onMuteButtonClick}>
+            <VolumeIcon aria-hidden width={24} height={24} />
+          </button>
+          <Slider
+            className={styles.volumeSlider}
+            label={t("video_tile.volume")}
+            value={playbackVolume}
+            min={0}
+            max={1}
+            step={0.01}
+            onValueChange={onVolumeChange}
+            onValueCommit={onVolumeCommit}
+          />
+        </MenuItem>
+      </Menu>
+    )
+  );
+};
+
+const ScreenShareMediaTile: FC<ScreenShareMediaTileProps> = ({
+  ref,
+  vm,
+  className,
+  displayName,
+  mxcAvatarUrl,
+  focusable,
+  onFocusMedia,
+  ...props
+}) => {
+  const video = useBehavior(vm.video$);
+  const unencryptedWarning = useBehavior(vm.unencryptedWarning$);
+  const focusUrl = useBehavior(vm.focusUrl$);
+  const videoEnabled = useBehavior(
+    vm.local ? constant(true) : vm.videoEnabled$,
+  );
+  const onClick = useCallback(() => onFocusMedia?.(vm.id), [onFocusMedia, vm]);
+
+  return (
+    <MediaView
+      ref={ref}
+      video={video}
+      userId={vm.userId}
+      unencryptedWarning={unencryptedWarning}
+      videoEnabled={videoEnabled}
+      videoFit="contain"
+      mirror={false}
+      className={classNames(className, styles.tile)}
+      displayName={displayName}
+      mxcAvatarUrl={mxcAvatarUrl}
+      focusable={focusable}
+      primaryButton={
+        !vm.local ? (
+          <RemoteScreenShareVolumeButton vm={vm} focusable={focusable} />
+        ) : undefined
+      }
+      focusUrl={focusUrl}
+      onClick={onClick}
+      {...props}
+    />
+  );
+};
 
 interface LocalUserMediaTileProps extends TileProps {
   vm: LocalUserMediaViewModel;
@@ -401,6 +520,7 @@ interface GridTileProps {
   showSpeakingIndicators: boolean;
   showNameTags: boolean;
   focusable: boolean;
+  onFocusMedia: ((mediaId: string) => void) | null;
 }
 
 export const GridTile: FC<GridTileProps> = ({
@@ -419,6 +539,16 @@ export const GridTile: FC<GridTileProps> = ({
   if (media.type === "ringing") {
     return (
       <RingingMediaTile
+        ref={ref}
+        vm={media}
+        displayName={displayName}
+        mxcAvatarUrl={mxcAvatarUrl}
+        {...props}
+      />
+    );
+  } else if (media.type === "screen share") {
+    return (
+      <ScreenShareMediaTile
         ref={ref}
         vm={media}
         displayName={displayName}

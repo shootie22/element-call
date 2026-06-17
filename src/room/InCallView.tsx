@@ -457,6 +457,17 @@ export const InCallView: FC<InCallViewProps> = ({
         );
         const showSpeakingIndicators = useBehavior(vm.showSpeakingIndicators$);
         const showNameTags = useBehavior(vm.showNameTags$);
+        const focusedMediaId = useBehavior(vm.focusedMediaId$);
+        const onFocusMedia = contentObscured
+          ? null
+          : (mediaId: string): void => {
+              if (mediaId === focusedMediaId) {
+                vm.setGridMode("grid");
+              } else {
+                vm.focusMedia(mediaId);
+                vm.setGridMode("spotlight");
+              }
+            };
 
         return model instanceof GridTileViewModel ? (
           <GridTile
@@ -470,6 +481,7 @@ export const InCallView: FC<InCallViewProps> = ({
             showSpeakingIndicators={showSpeakingIndicators}
             showNameTags={showNameTags}
             focusable={!contentObscured}
+            onFocusMedia={onFocusMedia}
           />
         ) : (
           <SpotlightTile
@@ -482,6 +494,7 @@ export const InCallView: FC<InCallViewProps> = ({
             showIndicators={showSpotlightIndicators}
             showNameTags={showNameTags}
             focusable={!contentObscured}
+            onFocusMedia={onFocusMedia}
             className={classNames(className, styles.tile)}
             style={style}
           />
@@ -516,6 +529,18 @@ export const InCallView: FC<InCallViewProps> = ({
           showIndicators={false}
           showNameTags={showNameTags}
           focusable={!contentObscured}
+          onFocusMedia={
+            contentObscured
+              ? null
+              : (mediaId: string): void => {
+                  if (mediaId === vm.focusedMediaId$.value) {
+                    vm.setGridMode("grid");
+                  } else {
+                    vm.focusMedia(mediaId);
+                    vm.setGridMode("spotlight");
+                  }
+                }
+          }
           aria-hidden={contentObscured}
         />
       );

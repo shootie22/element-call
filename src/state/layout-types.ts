@@ -21,21 +21,21 @@ export interface GridLayoutMedia {
   type: "grid";
   edgeToEdge: false;
   spotlight?: MediaViewModel[];
-  grid: UserMediaViewModel[];
+  grid: MediaViewModel[];
 }
 
 export interface SpotlightLandscapeLayoutMedia {
   type: "spotlight-landscape";
   edgeToEdge: boolean;
   spotlight: MediaViewModel[];
-  grid: UserMediaViewModel[];
+  grid: MediaViewModel[];
 }
 
 export interface SpotlightPortraitLayoutMedia {
   type: "spotlight-portrait";
   edgeToEdge: false;
   spotlight: MediaViewModel[];
-  grid: UserMediaViewModel[];
+  grid: MediaViewModel[];
 }
 
 export interface SpotlightExpandedLayoutMedia {
