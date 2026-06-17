@@ -5,9 +5,9 @@ on:
       - synchronize
       - opened
       - labeled
-   push:
-     branches: [livekit, full-mesh]
-     tags: [v*]
+  push:
+    branches: [livekit, full-mesh]
+    tags: [v*]
 jobs:
   build_full_element_call:
     # Use the full package vite build
