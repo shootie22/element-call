@@ -156,6 +156,7 @@ export function createCallFooterViewModel(
   const disableDeviceSwitcher$ = scope.behavior(
     isPip$.pipe(map((isPip) => isPip || platform !== "desktop")),
   );
+  let toggleDeafenSavedMic = false;
   return {
     ...buildMuteBehaviors(scope, muteStates),
     ...buildDeviceBehaviors(scope, mediaDevices, disableDeviceSwitcher$),
@@ -207,11 +208,19 @@ export function createCallFooterViewModel(
 
     deafenEnabled$: muteAllAudioSetting.value$,
     toggleDeafen$: constant(() => {
-      const willDeafen = !muteAllAudioSetting.getValue();
-      muteAllAudioSetting.setValue(willDeafen);
+      const isDeafened = muteAllAudioSetting.getValue();
       const setAudio = muteStates.audio.setEnabled$.value;
-      if (setAudio) {
-        setAudio(willDeafen);
+      if (!setAudio) return;
+
+      if (!isDeafened) {
+        // Deafen: save mic state, then mute
+        toggleDeafenSavedMic = muteStates.audio.enabled$.getValue();
+        setAudio(false);
+        muteAllAudioSetting.setValue(true);
+      } else {
+        // Undeafen: restore mic to pre-deafen state
+        setAudio(toggleDeafenSavedMic);
+        muteAllAudioSetting.setValue(false);
       }
     }),
 
