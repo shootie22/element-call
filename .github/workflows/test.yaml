@@ -27,7 +27,7 @@ jobs:
         # ignore-pnpmfile should never be commited. Make CI crash if it happened (`pnpmfileChecksum` is present)
         run: "pnpm install --frozen-lockfile --ignore-pnpmfile"
       - name: Vitest
-        run: "pnpm test:unit"
+        run: "pnpm test:coverage"
   playwright:
     name: Run end-to-end tests
     timeout-minutes: 60
