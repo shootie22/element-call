@@ -57,3 +57,11 @@ Please see LICENSE in the repository root for full details.
   font-weight: normal;
   color: var(--cpd-color-text-secondary);
 }
+
+.mediaQualitySettings {
+  min-inline-size: 0;
+}
+
+.mediaQualitySettings > h4 {
+  margin-block-start: 0;
+}

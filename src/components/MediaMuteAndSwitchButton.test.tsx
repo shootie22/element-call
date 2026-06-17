@@ -317,6 +317,44 @@ describe("MediaMuteAndSwitchButton", () => {
     expect(onVideoBlurToggle).toHaveBeenCalled();
   });
 
+  test("renders custom content in the camera menu", async () => {
+    const user = userEvent.setup();
+    const { getByRole } = renderComponent(
+      <MediaMuteAndSwitchButton
+        title="Switcher"
+        iconsAndLabels="video"
+        enabled={true}
+        menuContent={<div>Camera quality settings</div>}
+      />,
+    );
+
+    await user.click(getByRole("button", { name: "Camera" }));
+
+    expect(screen.getByText("Camera quality settings")).toBeInTheDocument();
+  });
+
+  test("renders screen share split button with custom content", async () => {
+    const user = userEvent.setup();
+    const onScreenShare = vi.fn();
+    const { getByRole } = renderComponent(
+      <MediaMuteAndSwitchButton
+        title="Screen sharing"
+        iconsAndLabels="screenShare"
+        enabled={false}
+        onMuteClick={onScreenShare}
+        menuContent={<div>Screen share quality settings</div>}
+      />,
+    );
+
+    await user.click(getByRole("switch", { name: "Share screen" }));
+    expect(onScreenShare).toHaveBeenCalled();
+
+    await user.click(getByRole("button", { name: "Screen sharing" }));
+    expect(
+      screen.getByText("Screen share quality settings"),
+    ).toBeInTheDocument();
+  });
+
   test("renders check icon to mark the selected menu item", async () => {
     const user = userEvent.setup();
     const { getByRole } = renderComponent(

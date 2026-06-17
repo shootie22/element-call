@@ -5,7 +5,13 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type ComponentType, useState, type FC, useEffect } from "react";
+import {
+  type ComponentType,
+  useState,
+  type FC,
+  useEffect,
+  type ReactNode,
+} from "react";
 import {
   Button,
   Menu,
@@ -24,7 +30,7 @@ import classNames from "classnames";
 import { useTranslation } from "react-i18next";
 
 import styles from "./MediaMuteAndSwitchButton.module.css";
-import { MicButton, VideoButton } from "../button";
+import { MicButton, ShareScreenButton, VideoButton } from "../button";
 import { type DeviceLabel } from "../state/MediaDevices";
 import { useMediaDevices } from "../MediaDevicesContext";
 
@@ -34,6 +40,7 @@ export interface MenuOptions {
 }
 
 export interface MediaMuteAndSwitchButtonProps {
+  className?: string;
   /** The title used in the Switcher modal. */
   title: string;
   /** If the Mute button is enabled */
@@ -42,13 +49,14 @@ export interface MediaMuteAndSwitchButtonProps {
   onMuteClick?: () => void;
   /** True while mute/unmute operation is syncing. */
   busy?: boolean;
-  iconsAndLabels: "video" | "audio";
+  iconsAndLabels: "video" | "audio" | "screenShare";
   /** The options available for the media device selector modal */
   options?: MenuOptions[];
   /** The option that will currently be rendered as the selected option */
   selectedOption?: string;
   videoBlurToggleClick?: () => void;
   videoBlurEnabled?: boolean;
+  menuContent?: ReactNode;
   /**
    * For any toggle and option this method will be called.
    * So toggles need to be implemented by listening here and setting the right toggle item to `enabled`
@@ -59,6 +67,7 @@ export interface MediaMuteAndSwitchButtonProps {
 const BLUR_ID = "blur";
 
 export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
+  className,
   title,
   enabled,
   busy,
@@ -68,6 +77,7 @@ export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
   selectedOption,
   videoBlurEnabled,
   videoBlurToggleClick,
+  menuContent,
   onSelect,
 }) => {
   const [plannedSelection, setPlannedSelection] = useState<string | null>(null);
@@ -77,8 +87,10 @@ export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
   const devices = useMediaDevices();
 
   useEffect(() => {
-    if (menuOpen) devices.requestDeviceNames(); // No-op after the first call
-  }, [menuOpen, devices]);
+    if (menuOpen && iconsAndLabels !== "screenShare") {
+      devices.requestDeviceNames(); // No-op after the first call
+    }
+  }, [menuOpen, devices, iconsAndLabels]);
 
   let button;
   let toggles: { label: string; enabled: boolean; id: string }[] = [];
@@ -122,6 +134,21 @@ export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
         />
       );
       break;
+    case "screenShare":
+      button = (
+        <ShareScreenButton
+          size="lg"
+          enabled={enabled ?? false}
+          onClick={(e) => {
+            onMuteClick?.();
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          disabled={isBusy || onMuteClick === undefined}
+          data-testid="incall_screenshare"
+        />
+      );
+      break;
   }
 
   let IconOptions: ComponentType<React.SVGAttributes<SVGElement>> | undefined;
@@ -140,18 +167,26 @@ export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
       numberedLabel = (n): string =>
         t("settings.devices.microphone_numbered", { n });
       break;
+    case "screenShare":
+      optionsButtonLabel = t("settings.screen_share_header", "Screen sharing");
+      numberedLabel = (n): string => n.toString();
+      break;
   }
 
   return (
     <div
-      className={classNames({
-        [styles.container]: true,
-        [styles.containerOpen]: menuOpen,
-      })}
+      className={classNames(
+        {
+          [styles.container]: true,
+          [styles.containerOpen]: menuOpen,
+        },
+        className,
+      )}
     >
       {/* The mute button lives inside */}
       {button}
       <Menu
+        className={classNames({ [styles.wideMenu]: menuContent })}
         title={title}
         showTitle={true}
         open={menuOpen}
@@ -221,6 +256,12 @@ export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
             key={toggle.id}
           />
         ))}
+        {menuContent && (
+          <>
+            {(options?.length ?? 0) + toggles.length > 0 && <hr />}
+            <div className={styles.customMenuContent}>{menuContent}</div>
+          </>
+        )}
       </Menu>
     </div>
   );

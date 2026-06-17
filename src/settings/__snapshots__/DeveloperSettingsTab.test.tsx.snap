@@ -488,110 +488,6 @@ exports[`DeveloperSettingsTab > renders and matches snapshot 1`] = `
     role="separator"
   />
   <h4>
-    Camera quality
-  </h4>
-  <div
-    class="fieldRow"
-  >
-    <div
-      class="field checkboxField"
-    >
-      <input
-        aria-describedby="_r_k_"
-        id="cameraToggle"
-        type="checkbox"
-      />
-      <label
-        for="cameraToggle"
-      >
-        <div
-          class="checkbox"
-        >
-          <svg
-            fill="none"
-            height="24"
-            stroke="#000"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-            width="24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="m20 6-11 11-5-5"
-            />
-          </svg>
-        </div>
-        Advanced camera settings
-      </label>
-      <p
-        class="description"
-        id="_r_k_"
-      >
-        Configure resolution, framerate, bitrate, and codec for camera video. Changes apply on next call join.
-      </p>
-    </div>
-  </div>
-  <div
-    class="_separator_13qwf_8"
-    data-kind="primary"
-    data-orientation="horizontal"
-    role="separator"
-  />
-  <h4>
-    Screen sharing
-  </h4>
-  <div
-    class="fieldRow"
-  >
-    <div
-      class="field checkboxField"
-    >
-      <input
-        aria-describedby="_r_l_"
-        id="screenShareToggle"
-        type="checkbox"
-      />
-      <label
-        for="screenShareToggle"
-      >
-        <div
-          class="checkbox"
-        >
-          <svg
-            fill="none"
-            height="24"
-            stroke="#000"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-            width="24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="m20 6-11 11-5-5"
-            />
-          </svg>
-        </div>
-        Advanced screen share settings
-      </label>
-      <p
-        class="description"
-        id="_r_l_"
-      >
-        Configure resolution, framerate, bitrate, and codec for screen sharing
-      </p>
-    </div>
-  </div>
-  <div
-    class="_separator_13qwf_8"
-    data-kind="primary"
-    data-orientation="horizontal"
-    role="separator"
-  />
-  <h4>
     Audio processing
   </h4>
   <p>
@@ -604,7 +500,7 @@ exports[`DeveloperSettingsTab > renders and matches snapshot 1`] = `
       class="field checkboxField"
     >
       <input
-        aria-describedby="_r_m_"
+        aria-describedby="_r_i_"
         checked=""
         id="echoCancellation"
         type="checkbox"
@@ -642,7 +538,7 @@ exports[`DeveloperSettingsTab > renders and matches snapshot 1`] = `
       class="field checkboxField"
     >
       <input
-        aria-describedby="_r_n_"
+        aria-describedby="_r_j_"
         checked=""
         id="noiseSuppression"
         type="checkbox"
@@ -680,7 +576,7 @@ exports[`DeveloperSettingsTab > renders and matches snapshot 1`] = `
       class="field checkboxField"
     >
       <input
-        aria-describedby="_r_o_"
+        aria-describedby="_r_k_"
         checked=""
         id="autoGainControl"
         type="checkbox"

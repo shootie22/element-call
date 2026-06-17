@@ -27,6 +27,17 @@ Please see LICENSE in the repository root for full details.
   color: var(--cpd-color-text-secondary);
 }
 
+.wideMenu {
+  inline-size: min(440px, calc(100vw - var(--cpd-space-8x)));
+  max-inline-size: calc(100vw - var(--cpd-space-8x));
+}
+
+.customMenuContent {
+  box-sizing: border-box;
+  inline-size: 100%;
+  padding: var(--cpd-space-4x);
+}
+
 .rotate {
   animation: spinner 1.5s linear infinite;
 }

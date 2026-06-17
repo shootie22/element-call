@@ -20,7 +20,6 @@ import {
   EndCallButton,
   MicButton,
   VideoButton,
-  ShareScreenButton,
   SettingsButton,
   ReactionToggleButton,
   LoudspeakerButton,
@@ -36,6 +35,10 @@ import {
 } from "./MediaMuteAndSwitchButton";
 import { type ViewModel } from "../state/ViewModel";
 import { useBehavior } from "../useBehavior";
+import {
+  CameraQualitySettings,
+  ScreenShareQualitySettings,
+} from "../settings/MediaQualitySettings";
 
 export interface AudioOutputSwitcher {
   targetOutput: string;
@@ -199,7 +202,7 @@ export const CallFooter: FC<FooterProps> = ({ ref, children, vm }) => {
     );
   }
 
-  if ((videoOptions?.length ?? 0) > 0) {
+  if ((videoOptions?.length ?? 0) > 0 || toggleVideo !== undefined) {
     buttons.push(
       <MediaMuteAndSwitchButton
         title={"Camera Source"}
@@ -213,6 +216,7 @@ export const CallFooter: FC<FooterProps> = ({ ref, children, vm }) => {
         onSelect={selectVideoButtonOption}
         videoBlurToggleClick={toggleBlur}
         videoBlurEnabled={videoBlurEnabled}
+        menuContent={<CameraQualitySettings />}
       />,
     );
   } else {
@@ -231,13 +235,14 @@ export const CallFooter: FC<FooterProps> = ({ ref, children, vm }) => {
 
   if (toggleScreenSharing !== undefined) {
     buttons.push(
-      <ShareScreenButton
-        size={buttonSize}
+      <MediaMuteAndSwitchButton
+        title={t("settings.screen_share_header", "Screen sharing")}
         key="share_screen"
         className={styles.shareScreen}
+        iconsAndLabels="screenShare"
         enabled={sharingScreen ?? false}
-        onClick={toggleScreenSharing}
-        data-testid="incall_screenshare"
+        onMuteClick={toggleScreenSharing}
+        menuContent={<ScreenShareQualitySettings />}
       />,
     );
   }
