@@ -37,6 +37,23 @@ jobs:
         type=sha,format=short,event=branch
         type=raw,value=latest-ci
         type=raw,value=latest-ci_{{date 'X' }}
+  docker_for_release:
+    # Build docker for tag pushes (releases) — tags with v* and latest
+    if: github.ref_type == 'tag'
+    needs: build_full_element_call
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    uses: ./.github/workflows/build-and-publish-docker.yaml
+    secrets: inherit
+    with:
+      artifact_run_id: ${{ github.run_id }}
+      docker_tags: |
+        type=sha,format=short,event=branch
+        type=raw,value=${{ github.ref_name }}
+        type=raw,value=latest
+
   build_embedded_element_call:
     # Use the embedded package vite build
     uses: ./.github/workflows/build-element-call.yaml
