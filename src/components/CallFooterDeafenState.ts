@@ -12,5 +12,5 @@ Please see LICENSE files in the repository root for full details.
 export let savedMicBeforeDeafen = false;
 
 export function saveMicBeforeDeafen(value: boolean): void {
-    savedMicBeforeDeafen = value;
+  savedMicBeforeDeafen = value;
 }

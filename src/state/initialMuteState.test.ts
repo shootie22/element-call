@@ -119,4 +119,4 @@ test.each<{
   },
 );
 
-export {}
+export {};

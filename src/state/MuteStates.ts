@@ -26,7 +26,10 @@ import {
 import { type MediaDevices, type MediaDevice } from "../state/MediaDevices";
 import { ElementWidgetActions, widget } from "../widget";
 import { muteAllAudio as muteAllAudioSetting } from "../settings/settings";
-import { saveMicBeforeDeafen, savedMicBeforeDeafen } from "../components/CallFooterDeafenState";
+import {
+  saveMicBeforeDeafen,
+  savedMicBeforeDeafen,
+} from "../components/CallFooterDeafenState";
 import { type ObservableScope } from "./ObservableScope";
 import { type Behavior, constant } from "./Behavior";
 
@@ -234,13 +237,15 @@ export class MuteStates {
       });
 
       // Sync our deafen state with the hosting client
-      muteAllAudioSetting.value$.pipe(this.scope.bind()).subscribe((deafened) => {
-        widget!.api.transport
-          .send(ElementWidgetActions.Deafen, { deafened })
-          .catch((e) =>
-            logger.warn("Could not send Deafen action to widget", e),
-          );
-      });
+      muteAllAudioSetting.value$
+        .pipe(this.scope.bind())
+        .subscribe((deafened) => {
+          widget!.api.transport
+            .send(ElementWidgetActions.Deafen, { deafened })
+            .catch((e) =>
+              logger.warn("Could not send Deafen action to widget", e),
+            );
+        });
 
       // Also sync the hosting client's mute states back with ours
       const muteActions$ = fromEvent(
@@ -286,10 +291,7 @@ export class MuteStates {
         ElementWidgetActions.Deafen,
       ) as Observable<CustomEvent<IWidgetApiRequest>>;
       deafenActions$
-        .pipe(
-          withLatestFrom(this.audio.setEnabled$),
-          this.scope.bind(),
-        )
+        .pipe(withLatestFrom(this.audio.setEnabled$), this.scope.bind())
         .subscribe(([ev, setAudioEnabled]) => {
           const desired = ev.detail.data.deafened as boolean;
           const isDeafened = muteAllAudioSetting.getValue();

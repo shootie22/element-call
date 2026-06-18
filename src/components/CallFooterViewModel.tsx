@@ -23,7 +23,10 @@ import { createStaticViewModel, type ViewModel } from "../state/ViewModel";
 import { getUrlParams, HeaderStyle } from "../UrlParams";
 import { platform } from "../Platform";
 import { type FooterSnapshot } from "./CallFooter";
-import { saveMicBeforeDeafen, savedMicBeforeDeafen } from "./CallFooterDeafenState";
+import {
+  saveMicBeforeDeafen,
+  savedMicBeforeDeafen,
+} from "./CallFooterDeafenState";
 
 /**
  * Shared helper: maps MuteStates into the audio/video enabled + toggle behaviors

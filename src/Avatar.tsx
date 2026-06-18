@@ -77,7 +77,9 @@ export const Avatar: FC<Props> = ({
 }) => {
   const clientState = useClientState();
   const client =
-    clientState?.state === "valid" ? clientState.authenticated?.client : undefined;
+    clientState?.state === "valid"
+      ? clientState.authenticated?.client
+      : undefined;
 
   const sizePx = useMemo(
     () =>
