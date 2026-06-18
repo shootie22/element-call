@@ -147,6 +147,7 @@ import {
 import { type ScreenShareViewModel } from "../media/ScreenShareViewModel.ts";
 import { type UserMediaViewModel } from "../media/UserMediaViewModel.ts";
 import { type MediaViewModel } from "../media/MediaViewModel.ts";
+import { type MemberMediaViewModel } from "../media/MemberMediaViewModel.ts";
 import { type LocalUserMediaViewModel } from "../media/LocalUserMediaViewModel.ts";
 import {
   createRingingMedia,
@@ -328,6 +329,12 @@ export interface CallViewModel {
     { sender: string; emoji: string; startX: number }[]
   >;
 
+  /**
+   * The list of media feeds (cameras that are switched on, plus screen shares)
+   * to display in the host's chrome-less feed-only embedding mode. Audio-only
+   * participants are excluded (the host renders avatars for those itself).
+   */
+  feedOnlyMedia$: Behavior<MemberMediaViewModel[]>;
   /**
    * The layout of tiles in the call interface.
    */
@@ -975,6 +982,30 @@ export function createCallViewModel$(
       feeds.push(...remainingScreenShares);
       return feeds;
     }),
+  );
+
+  // Feeds with active video only: screen shares (always video) plus cameras that
+  // are currently switched on. Used by the host's chrome-less feed-only mode.
+  const feedOnlyMedia$ = scope.behavior<MemberMediaViewModel[]>(
+    feeds$.pipe(
+      switchMap((feeds) => {
+        const memberFeeds = feeds.filter(
+          (f): f is MemberMediaViewModel =>
+            f.type === "user" || f.type === "screen share",
+        );
+        return memberFeeds.length === 0
+          ? of<MemberMediaViewModel[]>([])
+          : combineLatest(
+              memberFeeds.map((f) =>
+                f.type === "user"
+                  ? f.videoEnabled$.pipe(map((on) => (on ? f : null)))
+                  : of(f),
+              ),
+              (...resolved) =>
+                resolved.filter((f): f is MemberMediaViewModel => f !== null),
+            );
+      }),
+    ),
   );
 
   const focusedMediaIdSubject$ = new BehaviorSubject<string | null>(null);
@@ -1800,6 +1831,7 @@ export function createCallViewModel$(
     setGridMode: setGridMode,
     focusedMediaId$: focusedMediaId$,
     focusMedia,
+    feedOnlyMedia$: feedOnlyMedia$,
     layout$: layout$,
     localMatrixLivekitMember$,
     matrixLivekitMembers$: scope.behavior(

@@ -36,6 +36,7 @@ import {
   type JoinCallData,
   type WidgetHelpers,
 } from "../widget";
+import { feedOnly$ } from "../controls";
 import { LobbyView } from "./LobbyView";
 import { type MatrixInfo } from "./VideoPreview";
 import { CallEndedView } from "./CallEndedView";
@@ -342,6 +343,28 @@ export const GroupCallView: FC<Props> = ({
     latestMuteStates,
     setJoined,
   ]);
+
+  // Drive the feed-only embedding mode from the host (Element Web's call panel).
+  useEffect(() => {
+    if (!widget) return;
+    const w = widget;
+    const onFeedOnly = (ev: CustomEvent<IWidgetApiRequest>): void => {
+      const data = (ev.detail.data ?? {}) as {
+        enabled?: boolean;
+        includeSelf?: boolean;
+      };
+      feedOnly$.next({
+        enabled: !!data.enabled,
+        includeSelf: data.includeSelf !== false,
+      });
+      w.api.transport.reply(ev.detail, {});
+    };
+    w.lazyActions.on(ElementWidgetActions.FeedOnly, onFeedOnly);
+    return (): void => {
+      w.lazyActions.off(ElementWidgetActions.FeedOnly, onFeedOnly);
+      feedOnly$.next({ enabled: false, includeSelf: true });
+    };
+  }, [widget]);
 
   // TODO refactor this + "joined" to just one callState
   const [left, setLeft] = useState(false);

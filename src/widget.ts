@@ -34,6 +34,10 @@ export enum ElementWidgetActions {
   // Sent from the widget to the host with per-participant speaking/media state,
   // used to drive Element Web's global call panel. Send-only (host acks).
   CallMediaState = "io.element.call_media_state",
+  // Sent from the host to the widget to toggle "feed-only" embedding mode, where
+  // EC renders only the active camera/screenshare video feeds (chrome-less) for
+  // display in the host's call panel.
+  FeedOnly = "io.element.feed_only",
 }
 
 export interface JoinCallData {
@@ -95,6 +99,7 @@ export const initializeWidget = (
         ElementWidgetActions.HangupCall,
         ElementWidgetActions.DeviceMute,
         ElementWidgetActions.Deafen,
+        ElementWidgetActions.FeedOnly,
       ].forEach((action) => {
         api.on(`action:${action}`, (ev: CustomEvent<IWidgetApiRequest>) => {
           ev.preventDefault();

@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { Subject } from "rxjs";
+import { BehaviorSubject, Subject } from "rxjs";
 import { logger } from "matrix-js-sdk/lib/logger";
 
 export interface Controls {
@@ -73,6 +73,22 @@ export interface OutputDevice {
  * If pipMode is enabled, EC will render a adapted call view layout.
  */
 export const setPipEnabled$ = new Subject<boolean>();
+
+/**
+ * Feed-only embedding mode. When enabled (driven by the host via the
+ * `io.element.feed_only` widget action), EC renders nothing but the active
+ * camera/screenshare video feeds, stacked and chrome-less, for embedding in the
+ * host's call panel. `includeSelf` controls whether this client's own feeds are
+ * shown.
+ */
+export interface FeedOnlyState {
+  enabled: boolean;
+  includeSelf: boolean;
+}
+export const feedOnly$ = new BehaviorSubject<FeedOnlyState>({
+  enabled: false,
+  includeSelf: true,
+});
 
 /**
  * Stores the list of available controlled audio output devices.

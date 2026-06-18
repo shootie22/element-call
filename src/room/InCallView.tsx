@@ -71,6 +71,8 @@ import { useMediaDevices } from "../MediaDevicesContext.ts";
 import { EarpieceOverlay } from "./EarpieceOverlay.tsx";
 import { useAppBarHidden, useAppBarSecondaryButton } from "../AppBar.tsx";
 import { useBehavior } from "../useBehavior.ts";
+import { feedOnly$ } from "../controls.ts";
+import { FeedOnlyView } from "./FeedOnlyView.tsx";
 import { Toast } from "../Toast.tsx";
 import overlayStyles from "../Overlay.module.css";
 import { prefetchSounds } from "../soundUtils";
@@ -114,6 +116,7 @@ export const ActiveCall: FC<ActiveCallProps> = (props) => {
   const urlParams = useUrlParams();
   const mediaDevices = useMediaDevices();
   const trackProcessorState$ = useTrackProcessorObservable$();
+  const feedOnly = useBehavior(feedOnly$);
   useEffect(() => {
     logger.info("START CALL VIEW SCOPE");
     const scope = new ObservableScope();
@@ -188,6 +191,9 @@ export const ActiveCall: FC<ActiveCallProps> = (props) => {
   ]);
 
   if (vm === null) return null;
+  // Feed-only embedding mode: render just the stacked video feeds, no call UI.
+  if (feedOnly.enabled)
+    return <FeedOnlyView vm={vm} includeSelf={feedOnly.includeSelf} />;
   if (footerVm === null) return null;
 
   return (
