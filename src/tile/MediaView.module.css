@@ -70,6 +70,59 @@ Please see LICENSE in the repository root for full details.
   contain: strict;
 }
 
+/* Frozen last frame shown while a feed is manually disabled. */
+.frozenFeed {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  opacity: 0.35;
+  filter: blur(8px);
+  /* Scale up slightly so the blur doesn't sample transparent edges */
+  transform: scale(1.06);
+}
+
+/* "Feed disabled" badge in the corner of a disabled tile. */
+.feedDisabledBadge {
+  position: absolute;
+  inset-block-start: var(--cpd-space-2x);
+  inset-inline-start: var(--cpd-space-2x);
+  display: flex;
+  align-items: center;
+  gap: var(--cpd-space-1x);
+  padding: var(--cpd-space-1x) var(--cpd-space-2x);
+  border-radius: 99px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  pointer-events: none;
+}
+
+/* Spinner shown over the frozen frame while a re-enabled feed reconnects. */
+.feedSpinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.feedSpinnerDot {
+  inline-size: 28px;
+  block-size: 28px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-block-start-color: #fff;
+  animation: feedSpin 0.8s linear infinite;
+}
+
+@keyframes feedSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .avatar {
   position: absolute;
   top: 50%;

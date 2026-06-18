@@ -19,14 +19,19 @@ import {
   type WheelEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
 import classNames from "classnames";
 import { VideoTrack } from "@livekit/components-react";
+import { RemoteTrackPublication } from "livekit-client";
 import { Text, Tooltip } from "@vector-im/compound-web";
-import { ErrorSolidIcon } from "@vector-im/compound-design-tokens/assets/web/icons";
+import {
+  ErrorSolidIcon,
+  VideoCallOffSolidIcon,
+} from "@vector-im/compound-design-tokens/assets/web/icons";
 
 import styles from "./MediaView.module.css";
 import { Avatar } from "../Avatar";
@@ -111,6 +116,10 @@ interface Props extends ComponentProps<typeof animated.div> {
   rtcBackendIdentity?: string;
   // The focus url, mainly for debugging purposes
   focusUrl?: string;
+  // When true, the local user has manually disabled this (remote) feed: we
+  // unsubscribe from its track to save bandwidth/CPU and show a frozen last
+  // frame instead of live video.
+  feedDisabled?: boolean;
 }
 
 export const MediaView: FC<Props> = ({
@@ -140,6 +149,7 @@ export const MediaView: FC<Props> = ({
   videoStreamStats,
   rtcBackendIdentity,
   focusUrl,
+  feedDisabled = false,
   onClick,
   ...props
 }) => {
@@ -150,6 +160,66 @@ export const MediaView: FC<Props> = ({
   const [panning, setPanning] = useState(false);
   const drag = useRef<DragState | null>(null);
   const suppressNextClick = useRef(false);
+
+  // --- Per-feed disable (unsubscribe + frozen last frame) ---------------------
+  const bgRef = useRef<HTMLDivElement>(null);
+  // The captured last frame to show while the feed is disabled (data URL).
+  const [frozenFrame, setFrozenFrame] = useState<string | null>(null);
+  // Decouples removing the <VideoTrack> from `feedDisabled` so we can grab a
+  // final frame from the still-mounted <video> before it goes away.
+  const [videoUnmounted, setVideoUnmounted] = useState(false);
+  // True between re-enabling the feed and the live video producing a frame, so
+  // we can show a spinner over the frozen frame instead of a black flash.
+  const [reEnabling, setReEnabling] = useState(false);
+
+  const publication = video?.publication;
+
+  // Capture the current frame of the live <video> into a data URL.
+  const captureFrame = useCallback((): void => {
+    const videoEl = bgRef.current?.querySelector("video");
+    if (!videoEl || !videoEl.videoWidth || !videoEl.videoHeight) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = videoEl.videoWidth;
+    canvas.height = videoEl.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    try {
+      ctx.drawImage(videoEl, 0, 0);
+      setFrozenFrame(canvas.toDataURL("image/jpeg", 0.6));
+    } catch {
+      // Shouldn't happen for same-origin MediaStreams, but never let a capture
+      // failure break the tile.
+    }
+  }, []);
+
+  // Grab the last frame *before* unmounting the <VideoTrack>, then unmount it.
+  useLayoutEffect(() => {
+    if (feedDisabled && !videoUnmounted) {
+      captureFrame();
+      setVideoUnmounted(true);
+    } else if (!feedDisabled && videoUnmounted) {
+      setReEnabling(true);
+      setVideoUnmounted(false);
+    }
+  }, [feedDisabled, videoUnmounted, captureFrame]);
+
+  // Subscribe/unsubscribe the underlying remote track. Unsubscribing is what
+  // actually saves bandwidth and decode cost; not rendering <VideoTrack> (above)
+  // keeps adaptiveStream from silently re-subscribing.
+  useEffect(() => {
+    if (!(publication instanceof RemoteTrackPublication)) return;
+    publication.setSubscribed(!feedDisabled);
+  }, [publication, feedDisabled]);
+
+  // Clear the spinner once live video is actually playing again.
+  useEffect(() => {
+    if (!reEnabling) return;
+    const videoEl = bgRef.current?.querySelector("video");
+    if (!videoEl) return;
+    const done = (): void => setReEnabling(false);
+    videoEl.addEventListener("playing", done);
+    return (): void => videoEl.removeEventListener("playing", done);
+  }, [reEnabling, publication]);
 
   const avatarSize = Math.round(Math.min(targetWidth, targetHeight) / 2);
   const hasVideo = video?.publication !== undefined && videoEnabled;
@@ -403,7 +473,7 @@ export const MediaView: FC<Props> = ({
       onMouseUp={stopMousePanning}
       onClick={onTileClick}
     >
-      <div className={styles.bg}>
+      <div className={styles.bg} ref={bgRef}>
         <Avatar
           id={userId}
           name={displayName}
@@ -414,9 +484,14 @@ export const MediaView: FC<Props> = ({
             // for readability
             [styles.translucent]: status,
           })}
-          style={{ display: video && videoEnabled ? "none" : "initial" }}
+          style={{
+            display:
+              (video && videoEnabled && !feedDisabled) || frozenFrame
+                ? "none"
+                : "initial",
+          }}
         />
-        {video?.publication !== undefined && (
+        {video?.publication !== undefined && !videoUnmounted && (
           <VideoTrack
             trackRef={video}
             // There's no reason for this to be focusable
@@ -425,6 +500,27 @@ export const MediaView: FC<Props> = ({
             style={videoStyle}
             data-testid="video"
           />
+        )}
+        {feedDisabled && frozenFrame && (
+          <img
+            className={styles.frozenFeed}
+            src={frozenFrame}
+            alt=""
+            aria-hidden
+          />
+        )}
+        {feedDisabled && (
+          <div className={styles.feedDisabledBadge}>
+            <VideoCallOffSolidIcon width={16} height={16} aria-hidden />
+            <Text size="sm" weight="medium" as="span">
+              {t("video_tile.feed_disabled")}
+            </Text>
+          </div>
+        )}
+        {reEnabling && (
+          <div className={styles.feedSpinner} role="status">
+            <div className={styles.feedSpinnerDot} />
+          </div>
         )}
       </div>
       <div className={styles.fg}>

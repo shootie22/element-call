@@ -57,6 +57,7 @@ import { type RingingMediaViewModel } from "../state/media/RingingMediaViewModel
 import { type ScreenShareViewModel } from "../state/media/ScreenShareViewModel";
 import { type RemoteScreenShareViewModel } from "../state/media/RemoteScreenShareViewModel";
 import { constant } from "../state/Behavior";
+import { toggleFeedDisabled, useFeedDisabled } from "../state/disabledFeeds";
 
 interface TileProps {
   ref?: Ref<HTMLDivElement>;
@@ -69,6 +70,7 @@ interface TileProps {
   showNameTags: boolean;
   focusable: boolean;
   onFocusMedia: ((mediaId: string) => void) | null;
+  feedDisabled?: boolean;
 }
 
 interface RingingMediaTileProps extends TileProps {
@@ -460,11 +462,20 @@ const RemoteUserMediaTile: FC<RemoteUserMediaTileProps> = ({
   const playbackMuted = useBehavior(vm.playbackMuted$);
   const playbackVolume = useBehavior(vm.playbackVolume$);
   const focusUrl = useBehavior(vm.focusUrl$);
+  const feedDisabled = useFeedDisabled(vm.id);
 
   const onSelectMute = useCallback(
     (e: Event) => {
       e.preventDefault();
       vm.togglePlaybackMuted();
+    },
+    [vm],
+  );
+
+  const onToggleFeed = useCallback(
+    (e: Event) => {
+      e.preventDefault();
+      toggleFeedDisabled(vm.id);
     },
     [vm],
   );
@@ -478,8 +489,15 @@ const RemoteUserMediaTile: FC<RemoteUserMediaTileProps> = ({
       waitingForMedia={waitingForMedia}
       playbackMuted={playbackMuted}
       mirror={false}
+      feedDisabled={feedDisabled}
       menuStart={
         <>
+          <ToggleMenuItem
+            Icon={VideoCallSolidIcon}
+            label={t("video_tile.enable_feed")}
+            checked={!feedDisabled}
+            onSelect={onToggleFeed}
+          />
           <ToggleMenuItem
             Icon={MicOffIcon}
             label={t("video_tile.mute_for_me")}
