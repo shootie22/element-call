@@ -29,21 +29,11 @@ export enum ElementWidgetActions {
   JoinCall = "io.element.join",
   HangupCall = "im.vector.hangup",
   Close = "io.element.close",
-  // This can be sent as from or to widget
-  // fromWidget: updates the client about the current device mute state
-  // toWidget: the client requests a specific device mute configuration
-  //   The reply will always be the resulting configuration
-  //   It is possible to sent an empty configuration to retrieve the current values or
-  //   just one of the fields to update that particular value
-  //   An undefined field means that EC will keep the mute state as is.
-  //   -> this will allow the client to only get the current state
-  //
-  // The data of the widget action request and the response are:
-  // {
-  //   audio_enabled?: boolean,
-  //   video_enabled?: boolean
-  // }
   DeviceMute = "io.element.device_mute",
+  Deafen = "io.element.deafen",
+  // Sent from the widget to the host with per-participant speaking/media state,
+  // used to drive Element Web's global call panel. Send-only (host acks).
+  CallMediaState = "io.element.call_media_state",
 }
 
 export interface JoinCallData {
@@ -104,6 +94,7 @@ export const initializeWidget = (
         ElementWidgetActions.JoinCall,
         ElementWidgetActions.HangupCall,
         ElementWidgetActions.DeviceMute,
+        ElementWidgetActions.Deafen,
       ].forEach((action) => {
         api.on(`action:${action}`, (ev: CustomEvent<IWidgetApiRequest>) => {
           ev.preventDefault();

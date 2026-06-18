@@ -23,6 +23,7 @@ import { createStaticViewModel, type ViewModel } from "../state/ViewModel";
 import { getUrlParams, HeaderStyle } from "../UrlParams";
 import { platform } from "../Platform";
 import { type FooterSnapshot } from "./CallFooter";
+import { saveMicBeforeDeafen, savedMicBeforeDeafen } from "./CallFooterDeafenState";
 
 /**
  * Shared helper: maps MuteStates into the audio/video enabled + toggle behaviors
@@ -156,7 +157,6 @@ export function createCallFooterViewModel(
   const disableDeviceSwitcher$ = scope.behavior(
     isPip$.pipe(map((isPip) => isPip || platform !== "desktop")),
   );
-  let toggleDeafenSavedMic = false;
   return {
     ...buildMuteBehaviors(scope, muteStates),
     ...buildDeviceBehaviors(scope, mediaDevices, disableDeviceSwitcher$),
@@ -214,12 +214,12 @@ export function createCallFooterViewModel(
 
       if (!isDeafened) {
         // Deafen: save mic state, then mute
-        toggleDeafenSavedMic = muteStates.audio.enabled$.getValue();
+        saveMicBeforeDeafen(muteStates.audio.enabled$.getValue());
         setAudio(false);
         muteAllAudioSetting.setValue(true);
       } else {
         // Undeafen: restore mic to pre-deafen state
-        setAudio(toggleDeafenSavedMic);
+        setAudio(savedMicBeforeDeafen);
         muteAllAudioSetting.setValue(false);
       }
     }),

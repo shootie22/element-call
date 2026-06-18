@@ -995,6 +995,87 @@ export function createCallViewModel$(
       focusedMediaIdSubject$.next(null);
   });
 
+  // Report per-participant speaking/media state to the hosting client (Element
+  // Web's global call panel). Send-only; the host acks but we don't await it.
+  if (widget !== null) {
+    const callMediaState$ = userMedia$.pipe(
+      switchMap((mediaItems) =>
+        mediaItems.length === 0
+          ? of(
+              [] as {
+                userId: string;
+                deviceId: string;
+                displayName: string;
+                speaking: boolean;
+                sharingCamera: boolean;
+                sharingScreen: boolean;
+                local: boolean;
+              }[],
+            )
+          : combineLatest(
+              mediaItems.map((m) =>
+                combineLatest([
+                  m.speaking$,
+                  m.videoEnabled$,
+                  m.screenShares$.pipe(map((s) => s.length > 0)),
+                  m.displayName$,
+                ]).pipe(
+                  map(
+                    ([speaking, sharingCamera, sharingScreen, displayName]) => {
+                      // m.id is `${userId}:${deviceId}:${dup}`. userId may itself
+                      // contain colons, so strip the known userId prefix first.
+                      const rest = m.id.startsWith(`${m.userId}:`)
+                        ? m.id.slice(m.userId.length + 1)
+                        : m.id;
+                      const deviceId = rest.split(":")[0];
+                      return {
+                        userId: m.userId,
+                        deviceId,
+                        displayName,
+                        speaking,
+                        sharingCamera,
+                        sharingScreen,
+                        local: m.local,
+                      };
+                    },
+                  ),
+                ),
+              ),
+            ),
+      ),
+      // De-duplicate per-user so multiple tiles of the same user (duplicate
+      // tiles / multiple devices) collapse to a single avatar in the panel.
+      map((participants) => {
+        const byUser = new Map<string, (typeof participants)[number]>();
+        for (const p of participants) {
+          const existing = byUser.get(p.userId);
+          if (existing) {
+            existing.speaking ||= p.speaking;
+            existing.sharingCamera ||= p.sharingCamera;
+            existing.sharingScreen ||= p.sharingScreen;
+            existing.local ||= p.local;
+          } else {
+            byUser.set(p.userId, { ...p });
+          }
+        }
+        const deduped = [...byUser.values()];
+        return {
+          participants: deduped,
+          anyVideo: deduped.some((p) => p.sharingCamera || p.sharingScreen),
+        };
+      }),
+      throttleTime(250, undefined, { leading: true, trailing: true }),
+      distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
+    );
+    callMediaState$.pipe(scope.bind()).subscribe((state) => {
+      widget!.api.transport
+        .send(ElementWidgetActions.CallMediaState, state)
+        .catch((e) =>
+          logger.warn("Could not send CallMediaState action to widget", e),
+        );
+    });
+  }
+
   /**
    * Local user media suitable for displaying in a PiP (undefined if not found
    * or if user prefers to not see themselves).

@@ -25,6 +25,8 @@ import {
 
 import { type MediaDevices, type MediaDevice } from "../state/MediaDevices";
 import { ElementWidgetActions, widget } from "../widget";
+import { muteAllAudio as muteAllAudioSetting } from "../settings/settings";
+import { saveMicBeforeDeafen, savedMicBeforeDeafen } from "../components/CallFooterDeafenState";
 import { type ObservableScope } from "./ObservableScope";
 import { type Behavior, constant } from "./Behavior";
 
@@ -231,6 +233,15 @@ export class MuteStates {
           );
       });
 
+      // Sync our deafen state with the hosting client
+      muteAllAudioSetting.value$.pipe(this.scope.bind()).subscribe((deafened) => {
+        widget!.api.transport
+          .send(ElementWidgetActions.Deafen, { deafened })
+          .catch((e) =>
+            logger.warn("Could not send Deafen action to widget", e),
+          );
+      });
+
       // Also sync the hosting client's mute states back with ours
       const muteActions$ = fromEvent(
         widget.lazyActions,
@@ -267,6 +278,34 @@ export class MuteStates {
             setVideoEnabled(newState.video_enabled);
           }
           widget!.api.transport.reply(ev.detail, newState);
+        });
+
+      // Handle deafen widget actions from the hosting client
+      const deafenActions$ = fromEvent(
+        widget.lazyActions,
+        ElementWidgetActions.Deafen,
+      ) as Observable<CustomEvent<IWidgetApiRequest>>;
+      deafenActions$
+        .pipe(
+          withLatestFrom(this.audio.setEnabled$),
+          this.scope.bind(),
+        )
+        .subscribe(([ev, setAudioEnabled]) => {
+          const desired = ev.detail.data.deafened as boolean;
+          const isDeafened = muteAllAudioSetting.getValue();
+          if (desired === isDeafened) {
+            widget!.api.transport.reply(ev.detail, { deafened: desired });
+            return;
+          }
+          if (desired) {
+            saveMicBeforeDeafen(this.audio.enabled$.getValue());
+            setAudioEnabled?.(false);
+            muteAllAudioSetting.setValue(true);
+          } else {
+            setAudioEnabled?.(savedMicBeforeDeafen);
+            muteAllAudioSetting.setValue(false);
+          }
+          widget!.api.transport.reply(ev.detail, { deafened: desired });
         });
     }
   }
