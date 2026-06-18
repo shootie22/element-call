@@ -1074,22 +1074,23 @@ export function createCallViewModel$(
               ),
             ),
       ),
-      // De-duplicate per-user so multiple tiles of the same user (duplicate
-      // tiles / multiple devices) collapse to a single avatar in the panel.
+      // De-duplicate per device so duplicate tiles collapse, without merging
+      // speaking/media state across two devices for the same Matrix user.
       map((participants) => {
-        const byUser = new Map<string, (typeof participants)[number]>();
+        const bySlot = new Map<string, (typeof participants)[number]>();
         for (const p of participants) {
-          const existing = byUser.get(p.userId);
+          const key = `${p.userId}\u0000${p.deviceId}`;
+          const existing = bySlot.get(key);
           if (existing) {
             existing.speaking ||= p.speaking;
             existing.sharingCamera ||= p.sharingCamera;
             existing.sharingScreen ||= p.sharingScreen;
             existing.local ||= p.local;
           } else {
-            byUser.set(p.userId, { ...p });
+            bySlot.set(key, { ...p });
           }
         }
-        const deduped = [...byUser.values()];
+        const deduped = [...bySlot.values()];
         return {
           participants: deduped,
           anyVideo: deduped.some((p) => p.sharingCamera || p.sharingScreen),

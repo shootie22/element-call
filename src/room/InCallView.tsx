@@ -191,15 +191,41 @@ export const ActiveCall: FC<ActiveCallProps> = (props) => {
   ]);
 
   if (vm === null) return null;
+  const audioRenderer = <CallAudioRenderer vm={vm} />;
   // Feed-only embedding mode: render just the stacked video feeds, no call UI.
   if (feedOnly.enabled)
-    return <FeedOnlyView vm={vm} includeSelf={feedOnly.includeSelf} />;
+    return (
+      <>
+        {audioRenderer}
+        <FeedOnlyView vm={vm} includeSelf={feedOnly.includeSelf} />
+      </>
+    );
   if (footerVm === null) return null;
 
   return (
     <ReactionsSenderProvider vm={vm} rtcSession={props.rtcSession}>
+      {audioRenderer}
       <InCallView {...props} vm={vm} footerVm={footerVm} />
     </ReactionsSenderProvider>
+  );
+};
+
+const CallAudioRenderer: FC<{ vm: CallViewModel }> = ({ vm }) => {
+  const muteAllAudio = useBehavior(muteAllAudio$);
+  const audioParticipants = useBehavior(vm.livekitRoomItems$);
+
+  return (
+    <>
+      {audioParticipants.map(({ livekitRoom, url, participants }) => (
+        <LivekitRoomAudioRenderer
+          key={url}
+          url={url}
+          livekitRoom={livekitRoom}
+          validIdentities={participants}
+          muted={muteAllAudio}
+        />
+      ))}
+    </>
   );
 };
 
@@ -273,7 +299,6 @@ export const InCallView: FC<InCallViewProps> = ({
   );
 
   const ringing = useBehavior(vm.ringing$);
-  const audioParticipants = useBehavior(vm.livekitRoomItems$);
   const participantCount = useBehavior(vm.participantCount$);
   const reconnecting = useBehavior(vm.reconnecting$);
   const layout = useBehavior(vm.layout$);
@@ -645,15 +670,6 @@ export const InCallView: FC<InCallViewProps> = ({
       onPointerOut={onPointerOut}
     >
       {header}
-      {audioParticipants.map(({ livekitRoom, url, participants }) => (
-        <LivekitRoomAudioRenderer
-          key={url}
-          url={url}
-          livekitRoom={livekitRoom}
-          validIdentities={participants}
-          muted={muteAllAudio}
-        />
-      ))}
       {renderContent()}
       <CallEventAudioRenderer vm={vm} muted={muteAllAudio} />
       <ReactionsAudioRenderer vm={vm} muted={muteAllAudio} />
