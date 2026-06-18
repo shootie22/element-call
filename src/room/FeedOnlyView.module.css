@@ -20,11 +20,3 @@ Please see LICENSE in the repository root for full details.
   min-height: 0;
   width: 100%;
 }
-
-.video[data-fit="contain"] video {
-  object-fit: contain;
-}
-
-.video[data-fit="cover"] video {
-  object-fit: cover;
-}

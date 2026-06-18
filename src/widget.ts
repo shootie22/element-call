@@ -38,6 +38,9 @@ export enum ElementWidgetActions {
   // EC renders only the active camera/screenshare video feeds (chrome-less) for
   // display in the host's call panel.
   FeedOnly = "io.element.feed_only",
+  // Sent from the widget to the host to request being expanded to the full call
+  // UI (e.g. double-clicking a feed in the host's call panel). Send-only.
+  Expand = "io.element.expand",
 }
 
 export interface JoinCallData {
