@@ -293,8 +293,16 @@ export class MuteStates {
       deafenActions$
         .pipe(withLatestFrom(this.audio.setEnabled$), this.scope.bind())
         .subscribe(([ev, setAudioEnabled]) => {
-          const desired = ev.detail.data.deafened as boolean;
+          const desired = ev.detail.data.deafened;
           const isDeafened = muteAllAudioSetting.getValue();
+          // A missing/non-boolean value is a read-only state query (used by the
+          // host to pull the current deafen state): report it without changing
+          // anything. Without this guard, an absent value would fall through to
+          // the un-deafen branch below and clobber the user's state.
+          if (typeof desired !== "boolean") {
+            widget!.api.transport.reply(ev.detail, { deafened: isDeafened });
+            return;
+          }
           if (desired === isDeafened) {
             widget!.api.transport.reply(ev.detail, { deafened: desired });
             return;
