@@ -169,10 +169,12 @@ export const MediaView: FC<Props> = ({
   // final frame from the still-mounted <video> before it goes away.
   const [videoUnmounted, setVideoUnmounted] = useState(false);
   // True between re-enabling the feed and the live video producing a frame, so
-  // we can show a spinner over the frozen frame instead of a black flash.
+  // we can show a spinner over the frozen frame instead of a black flash. Only
+  // ever armed when there's actually live video to wait for.
   const [reEnabling, setReEnabling] = useState(false);
 
   const publication = video?.publication;
+  const hasVideo = publication !== undefined && videoEnabled;
 
   // Capture the current frame of the live <video> into a data URL.
   const captureFrame = useCallback((): void => {
@@ -193,15 +195,19 @@ export const MediaView: FC<Props> = ({
   }, []);
 
   // Grab the last frame *before* unmounting the <VideoTrack>, then unmount it.
+  // On re-enable, only arm the reconnect spinner if there's actually live video
+  // to wait for; if the remote's camera/share is off there will never be a
+  // frame, so the spinner would otherwise spin forever.
   useLayoutEffect(() => {
     if (feedDisabled && !videoUnmounted) {
       captureFrame();
       setVideoUnmounted(true);
+      setReEnabling(false);
     } else if (!feedDisabled && videoUnmounted) {
-      setReEnabling(true);
+      setReEnabling(hasVideo);
       setVideoUnmounted(false);
     }
-  }, [feedDisabled, videoUnmounted, captureFrame]);
+  }, [feedDisabled, videoUnmounted, hasVideo, captureFrame]);
 
   // Subscribe/unsubscribe the underlying remote track. Unsubscribing is what
   // actually saves bandwidth and decode cost; not rendering <VideoTrack> (above)
@@ -211,18 +217,33 @@ export const MediaView: FC<Props> = ({
     publication.setSubscribed(!feedDisabled);
   }, [publication, feedDisabled]);
 
-  // Clear the spinner once live video is actually playing again.
+  // Clear the reconnect spinner (and drop the now-stale frozen frame) once live
+  // video is playing again. The no-video guards and the timeout fallback make
+  // sure the spinner can never get stuck if a frame never arrives.
   useEffect(() => {
     if (!reEnabling) return;
+    const clear = (): void => {
+      setReEnabling(false);
+      setFrozenFrame(null);
+    };
     const videoEl = bgRef.current?.querySelector("video");
-    if (!videoEl) return;
-    const done = (): void => setReEnabling(false);
-    videoEl.addEventListener("playing", done);
-    return (): void => videoEl.removeEventListener("playing", done);
-  }, [reEnabling, publication]);
+    if (!hasVideo || !videoEl) {
+      clear();
+      return;
+    }
+    if (!videoEl.paused && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
+      clear();
+      return;
+    }
+    videoEl.addEventListener("playing", clear);
+    const timeout = window.setTimeout(clear, 5000);
+    return (): void => {
+      videoEl.removeEventListener("playing", clear);
+      window.clearTimeout(timeout);
+    };
+  }, [reEnabling, hasVideo, publication]);
 
   const avatarSize = Math.round(Math.min(targetWidth, targetHeight) / 2);
-  const hasVideo = video?.publication !== undefined && videoEnabled;
   const zoomed = zoom.scale !== DEFAULT_ZOOM;
 
   const resetZoom = useCallback(() => {
@@ -434,6 +455,14 @@ export const MediaView: FC<Props> = ({
     "--media-video-offset-y": `${zoom.offsetY}px`,
   } as CSSProperties;
 
+  // There's a video track to display (so the avatar should hide). A placeholder
+  // track with no publication still counts here, matching the original
+  // behaviour of showing a blank tile rather than the avatar.
+  const coveredByVideo = !!video && videoEnabled && !feedDisabled;
+  // We have a frozen frame to show: while disabled, or briefly while a
+  // re-enabled feed reconnects.
+  const showFrozenFrame = frozenFrame !== null && (feedDisabled || reEnabling);
+
   const warnings = unencryptedWarning && (
     <Tooltip
       label={t("common.unencrypted")}
@@ -485,10 +514,7 @@ export const MediaView: FC<Props> = ({
             [styles.translucent]: status,
           })}
           style={{
-            display:
-              (video && videoEnabled && !feedDisabled) || frozenFrame
-                ? "none"
-                : "initial",
+            display: coveredByVideo || showFrozenFrame ? "none" : "initial",
           }}
         />
         {video?.publication !== undefined && !videoUnmounted && (
@@ -501,10 +527,10 @@ export const MediaView: FC<Props> = ({
             data-testid="video"
           />
         )}
-        {feedDisabled && frozenFrame && (
+        {showFrozenFrame && (
           <img
             className={styles.frozenFeed}
-            src={frozenFrame}
+            src={frozenFrame ?? undefined}
             alt=""
             aria-hidden
           />

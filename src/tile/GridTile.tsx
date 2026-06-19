@@ -24,7 +24,6 @@ import {
   MicOffIcon,
   OverflowHorizontalIcon,
   VolumeOnIcon,
-  VolumeOnSolidIcon,
   VolumeOffIcon,
   VisibilityOnIcon,
   UserProfileIcon,
@@ -56,7 +55,6 @@ import { type UserMediaViewModel } from "../state/media/UserMediaViewModel";
 import { type RingingMediaViewModel } from "../state/media/RingingMediaViewModel";
 import { type ScreenShareViewModel } from "../state/media/ScreenShareViewModel";
 import { type RemoteScreenShareViewModel } from "../state/media/RemoteScreenShareViewModel";
-import { constant } from "../state/Behavior";
 import { toggleFeedDisabled, useFeedDisabled } from "../state/disabledFeeds";
 
 interface TileProps {
@@ -269,19 +267,17 @@ interface ScreenShareMediaTileProps extends TileProps {
   vm: ScreenShareViewModel;
 }
 
-const RemoteScreenShareVolumeButton: FC<{
+/**
+ * Volume controls for a remote screen share, rendered inside the screen
+ * share's options menu (overflow button and right-click context menu).
+ */
+const RemoteScreenShareVolumeMenuItem: FC<{
   vm: RemoteScreenShareViewModel;
-  focusable: boolean;
-}> = ({ vm, focusable }) => {
+}> = ({ vm }) => {
   const { t } = useTranslation();
-  const audioEnabled = useBehavior(vm.audioEnabled$);
   const playbackMuted = useBehavior(vm.playbackMuted$);
   const playbackVolume = useBehavior(vm.playbackVolume$);
-  const [menuOpen, setMenuOpen] = useState(false);
   const VolumeIcon = playbackMuted ? VolumeOffIcon : VolumeOnIcon;
-  const VolumeSolidIcon = playbackMuted
-    ? VolumeOffSolidIcon
-    : VolumeOnSolidIcon;
   const onMuteButtonClick = useCallback(() => vm.togglePlaybackMuted(), [vm]);
   const onVolumeChange = useCallback(
     (v: number) => vm.adjustPlaybackVolume(v),
@@ -290,49 +286,31 @@ const RemoteScreenShareVolumeButton: FC<{
   const onVolumeCommit = useCallback(() => vm.commitPlaybackVolume(), [vm]);
 
   return (
-    audioEnabled && (
-      <Menu
-        open={menuOpen}
-        onOpenChange={setMenuOpen}
-        title={t("video_tile.screen_share_volume")}
-        trigger={
-          <button
-            aria-label={t("video_tile.screen_share_volume")}
-            tabIndex={focusable ? undefined : -1}
-          >
-            <VolumeSolidIcon aria-hidden width={20} height={20} />
-          </button>
-        }
-        side="left"
-        align="start"
-      >
-        <MenuItem
-          as="div"
-          className={styles.volumeMenuItem}
-          onSelect={null}
-          label={null}
-          hideChevron={true}
-        >
-          <button className={styles.menuMuteButton} onClick={onMuteButtonClick}>
-            <VolumeIcon aria-hidden width={24} height={24} />
-          </button>
-          <Slider
-            className={styles.volumeSlider}
-            label={t("video_tile.volume")}
-            value={playbackVolume}
-            min={0}
-            max={1}
-            step={0.01}
-            onValueChange={onVolumeChange}
-            onValueCommit={onVolumeCommit}
-          />
-        </MenuItem>
-      </Menu>
-    )
+    <MenuItem
+      as="div"
+      className={styles.volumeMenuItem}
+      onSelect={null}
+      label={null}
+      hideChevron={true}
+    >
+      <button className={styles.menuMuteButton} onClick={onMuteButtonClick}>
+        <VolumeIcon aria-hidden width={24} height={24} />
+      </button>
+      <Slider
+        className={styles.volumeSlider}
+        label={t("video_tile.volume")}
+        value={playbackVolume}
+        min={0}
+        max={1}
+        step={0.01}
+        onValueChange={onVolumeChange}
+        onValueCommit={onVolumeCommit}
+      />
+    </MenuItem>
   );
 };
 
-const ScreenShareMediaTile: FC<ScreenShareMediaTileProps> = ({
+const LocalScreenShareMediaTile: FC<ScreenShareMediaTileProps> = ({
   ref,
   vm,
   className,
@@ -345,12 +323,73 @@ const ScreenShareMediaTile: FC<ScreenShareMediaTileProps> = ({
   const video = useBehavior(vm.video$);
   const unencryptedWarning = useBehavior(vm.unencryptedWarning$);
   const focusUrl = useBehavior(vm.focusUrl$);
-  const videoEnabled = useBehavior(
-    vm.local ? constant(true) : vm.videoEnabled$,
-  );
   const onClick = useCallback(() => onFocusMedia?.(vm.id), [onFocusMedia, vm]);
 
   return (
+    <MediaView
+      ref={ref}
+      video={video}
+      userId={vm.userId}
+      unencryptedWarning={unencryptedWarning}
+      videoEnabled
+      videoFit="contain"
+      mirror={false}
+      className={classNames(className, styles.tile)}
+      displayName={displayName}
+      mxcAvatarUrl={mxcAvatarUrl}
+      focusable={focusable}
+      focusUrl={focusUrl}
+      onClick={onClick}
+      {...props}
+    />
+  );
+};
+
+const RemoteScreenShareMediaTile: FC<
+  Omit<ScreenShareMediaTileProps, "vm"> & { vm: RemoteScreenShareViewModel }
+> = ({
+  ref,
+  vm,
+  className,
+  displayName,
+  mxcAvatarUrl,
+  focusable,
+  onFocusMedia,
+  ...props
+}) => {
+  const { t } = useTranslation();
+  const video = useBehavior(vm.video$);
+  const unencryptedWarning = useBehavior(vm.unencryptedWarning$);
+  const focusUrl = useBehavior(vm.focusUrl$);
+  const videoEnabled = useBehavior(vm.videoEnabled$);
+  const audioEnabled = useBehavior(vm.audioEnabled$);
+  const feedDisabled = useFeedDisabled(vm.id);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const onClick = useCallback(() => onFocusMedia?.(vm.id), [onFocusMedia, vm]);
+
+  const onToggleFeed = useCallback(
+    (e: Event) => {
+      e.preventDefault();
+      toggleFeedDisabled(vm.id);
+    },
+    [vm],
+  );
+
+  // The same options are offered through both the overflow button (keyboard
+  // accessible) and the right-click context menu below.
+  const menu = (
+    <>
+      <ToggleMenuItem
+        Icon={VideoCallSolidIcon}
+        label={t("video_tile.enable_feed")}
+        checked={!feedDisabled}
+        onSelect={onToggleFeed}
+      />
+      {audioEnabled && <RemoteScreenShareVolumeMenuItem vm={vm} />}
+    </>
+  );
+
+  const tile = (
     <MediaView
       ref={ref}
       video={video}
@@ -363,17 +402,48 @@ const ScreenShareMediaTile: FC<ScreenShareMediaTileProps> = ({
       displayName={displayName}
       mxcAvatarUrl={mxcAvatarUrl}
       focusable={focusable}
+      feedDisabled={feedDisabled}
       primaryButton={
-        !vm.local ? (
-          <RemoteScreenShareVolumeButton vm={vm} focusable={focusable} />
-        ) : undefined
+        <Menu
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
+          title={displayName}
+          trigger={
+            <button
+              aria-label={t("common.options")}
+              tabIndex={focusable ? undefined : -1}
+            >
+              <OverflowHorizontalIcon aria-hidden width={20} height={20} />
+            </button>
+          }
+          side="left"
+          align="start"
+        >
+          {menu}
+        </Menu>
       }
       focusUrl={focusUrl}
       onClick={onClick}
       {...props}
     />
   );
+
+  return (
+    <ContextMenu title={displayName} trigger={tile} hasAccessibleAlternative>
+      {menu}
+    </ContextMenu>
+  );
 };
+
+const ScreenShareMediaTile: FC<ScreenShareMediaTileProps> = ({
+  vm,
+  ...props
+}) =>
+  vm.local ? (
+    <LocalScreenShareMediaTile vm={vm} {...props} />
+  ) : (
+    <RemoteScreenShareMediaTile vm={vm} {...props} />
+  );
 
 interface LocalUserMediaTileProps extends TileProps {
   vm: LocalUserMediaViewModel;
