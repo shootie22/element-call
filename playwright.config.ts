@@ -120,6 +120,9 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     ignoreHTTPSErrors: true,
+    // In CI the command runs `pnpm build` + `docker build` + `docker run`,
+    // which routinely exceeds Playwright's default 60s startup timeout.
+    timeout: 300_000,
     gracefulShutdown: {
       signal: "SIGTERM",
       timeout: 500,
