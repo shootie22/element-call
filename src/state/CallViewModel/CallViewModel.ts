@@ -93,6 +93,7 @@ import {
   type GridLayoutMedia,
   type Layout,
   type LayoutMedia,
+  type OneOnOnePortraitLayoutMedia,
   type SpotlightLandscapeLayoutMedia,
   type SpotlightPortraitLayoutMedia,
 } from "../layout-types.ts";
@@ -146,6 +147,7 @@ import {
 } from "../media/WrappedUserMediaViewModel.ts";
 import { type ScreenShareViewModel } from "../media/ScreenShareViewModel.ts";
 import { type UserMediaViewModel } from "../media/UserMediaViewModel.ts";
+import { type RemoteUserMediaViewModel } from "../media/RemoteUserMediaViewModel.ts";
 import { type MediaViewModel } from "../media/MediaViewModel.ts";
 import { type MemberMediaViewModel } from "../media/MemberMediaViewModel.ts";
 import { type LocalUserMediaViewModel } from "../media/LocalUserMediaViewModel.ts";
@@ -1267,6 +1269,63 @@ export function createCallViewModel$(
       grid: feeds.filter((feed) => !spotlight.includes(feed)),
     }));
 
+  // The immersive one-on-one layout (full-screen remote with a small
+  // picture-in-picture of the local feed). Only applies to a 2-person call with
+  // no screen shares. Used by the narrow (mobile/portrait) window mode below; on
+  // a phone this fits the screen far better than a generic two-tile grid.
+  const oneOnOneLayoutMedia$: Observable<{
+    local: LocalUserMediaViewModel;
+    remote: UserMediaViewModel | RingingMediaViewModel;
+  } | null> = combineLatest([userMedia$, screenShares$]).pipe(
+    switchMap(([userMedia, screenShares]) => {
+      // One-on-one layout only supports 2 user media, no screen shares
+      if (userMedia.length <= 2 && screenShares.length === 0) {
+        const local = userMedia.find(
+          (vm): vm is WrappedUserMediaViewModel & LocalUserMediaViewModel =>
+            vm.type === "user" && vm.local,
+        );
+
+        if (local !== undefined) {
+          const remote = userMedia.find(
+            (vm): vm is WrappedUserMediaViewModel & RemoteUserMediaViewModel =>
+              vm.type === "user" && !vm.local,
+          );
+
+          if (remote !== undefined) return of({ local, remote });
+
+          // If there's no other user media in the call (could still happen in
+          // this branch due to the duplicate tiles option), we could possibly
+          // show ringing media instead
+          if (userMedia.length === 1)
+            return ringingMedia$.pipe(
+              map((ringingMedia) =>
+                ringingMedia.length === 1
+                  ? { local, remote: ringingMedia[0] }
+                  : null,
+              ),
+            );
+        }
+      }
+
+      return of(null);
+    }),
+  );
+
+  const oneOnOnePortraitLayoutMedia$: Observable<OneOnOnePortraitLayoutMedia | null> =
+    oneOnOneLayoutMedia$.pipe(
+      switchMap((media) => {
+        if (media === null) return of(null);
+        return media.local.videoEnabled$.pipe(
+          map((videoEnabled) => ({
+            type: "one-on-one-portrait" as const,
+            edgeToEdge: true as const,
+            spotlight: media.remote,
+            pip: videoEnabled ? media.local : undefined,
+          })),
+        );
+      }),
+    );
+
   const pipLayoutMedia$: Observable<LayoutMedia> = spotlight$.pipe(
     map((spotlight) => ({
       type: "pip",
@@ -1321,12 +1380,21 @@ export function createCallViewModel$(
               }),
             );
           case "narrow":
-            return combineLatest([feeds$, spotlight$], (grid, spotlight) =>
-              grid.length > smallMobileCallThreshold ||
-              spotlight.some((vm) => vm.type === "screen share")
-                ? spotlightPortraitLayoutMedia$
-                : gridLayoutMedia$,
-            ).pipe(switchAll());
+            // Prefer the immersive one-on-one portrait layout for 2-person
+            // calls on a phone; fall back to grid/spotlight for larger calls or
+            // when there's a screen share.
+            return oneOnOnePortraitLayoutMedia$.pipe(
+              switchMap((oneOnOne) =>
+                oneOnOne === null
+                  ? combineLatest([feeds$, spotlight$], (grid, spotlight) =>
+                      grid.length > smallMobileCallThreshold ||
+                      spotlight.some((vm) => vm.type === "screen share")
+                        ? spotlightPortraitLayoutMedia$
+                        : gridLayoutMedia$,
+                    ).pipe(switchAll())
+                  : of(oneOnOne),
+              ),
+            );
 
           case "flat":
             return gridMode$.pipe(
