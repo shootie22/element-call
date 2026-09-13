@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { BehaviorSubject, Subject } from "rxjs";
+import { Subject } from "rxjs";
 import { logger } from "matrix-js-sdk/lib/logger";
 
 export interface Controls {
@@ -85,10 +85,6 @@ export interface FeedOnlyState {
   enabled: boolean;
   includeSelf: boolean;
 }
-export const feedOnly$ = new BehaviorSubject<FeedOnlyState>({
-  enabled: false,
-  includeSelf: true,
-});
 
 /**
  * Stores the list of available controlled audio output devices.

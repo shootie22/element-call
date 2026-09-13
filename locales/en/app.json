@@ -56,12 +56,13 @@
     "username": "Username",
     "video": "Video"
   },
+  "deafen_button_label": "Deafen",
   "developer_mode": {
     "always_show_iphone_earpiece": "Show iPhone earpiece option on all platforms",
     "crypto_version": "Crypto version: {{version}}",
     "custom_livekit_url": {
       "current_url": "Currently set to: ",
-      "from_config": "Currently, no overwrite is set. Url from well-known or config is used.",
+      "from_config": "Currently, no overwrite is set. Url from config is used.",
       "label": "Custom Livekit-url",
       "reset": "Reset overwrite",
       "save": "Save",
@@ -79,10 +80,6 @@
       "Comptibility": {
         "description": "Compatible with homeservers that do not support sticky events (but all other EC clients are v0.17.0 or later)",
         "label": "Compatibility: state events & multi SFU"
-      },
-      "Legacy": {
-        "description": "Compatible with old versions of EC that do not support multi SFU",
-        "label": "Legacy: state events & oldest membership SFU"
       },
       "Matrix_2_0": {
         "description": "Compatible only with homservers supporting sticky events and all EC clients v0.17.0 or later",
@@ -120,6 +117,7 @@
     "peer_connection_timeout_description": "Connection to the media server timed out. Try switching to a different network or disabling your VPN. If the problem persists, see our <0>troubleshooting guide</0> or contact your server administrator.",
     "room_creation_restricted": "Failed to create call",
     "room_creation_restricted_description": "Call creation might be restricted to authorized users only. Try again later, or contact your server admin if the problem persists.",
+    "screen_share_failed": "Could not start screen sharing",
     "sticky_events_required": "Homeserver does not support Matrix 2.0 calls",
     "sticky_events_required_description": "This deployment is configured to use Matrix 2.0 call mode, but the homeserver does not advertise support for sticky events (MSC4354). Ask your server admin to upgrade, or switch the deployment to a compatible mode.",
     "unexpected_ec_error": "An unexpected error occurred (<0>Error Code:</0> <1>{{ errorCode }}</1>). Please contact your server admin."
@@ -168,8 +166,6 @@
   "login_title": "Login",
   "microphone_off": "Microphone off",
   "microphone_on": "Microphone on",
-  "deafen_button_label": "Deafen",
-  "undeafen_button_label": "Undeafen",
   "mute_microphone_button_label": "Mute microphone",
   "participant_count_one": "{{count, number}}",
   "participant_count_other": "{{count, number}}",
@@ -217,6 +213,7 @@
     "codec_label": "Codec",
     "developer_tab_title": "Developer",
     "devices": {
+      "activating": "Activating…",
       "camera": "Camera",
       "camera_numbered": "Camera {{n}}",
       "change_device_button": "Change audio device",
@@ -265,6 +262,7 @@
   "unauthenticated_view_body": "Not registered yet? <2>Create an account</2>",
   "unauthenticated_view_login_button": "Login to your account",
   "unauthenticated_view_ssla_caption": "By clicking \"Go\", you agree to our <2>Software and Services License Agreement (SSLA)</2>",
+  "undeafen_button_label": "Undeafen",
   "unmute_microphone_button_label": "Unmute microphone",
   "version": "{{productName}} version: {{version}}",
   "video_tile": {

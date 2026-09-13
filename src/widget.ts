@@ -55,21 +55,21 @@ export interface WidgetHelpers {
 }
 
 /**
- * A point of access to the widget API, if the app is running as a widget. This
- * is initialized with `initializeWidget`. This should happen at the top level because the widget messaging
- * needs to be set up ASAP on load to ensure it doesn't miss any requests.
- */
-export let widget: WidgetHelpers | null = null;
-
-/**
- * Should be called as soon as possible on app start. (In the initilizer before react)
+ * Connects to the widget API, if Element Call is running as a widget.
+ *
+ * Should be called as soon as possible on app start (in the initializer, before
+ * React), because the widget messaging needs to be set up ASAP on load to
+ * ensure it doesn't miss any requests.
+ *
+ * @returns A point of access to the widget API, or null if Element Call is not
+ *   running as a widget.
  */
 // this needs to be a seperate call and cannot be done on import to allow us to spy on methods in here before
 // execution.
 export const initializeWidget = (
   rtcApplication: string = "m.call",
   sendRoomEvents = false,
-): void => {
+): WidgetHelpers | null => {
   try {
     const {
       widgetId,
@@ -173,6 +173,7 @@ export const initializeWidget = (
           sendToDevice: sendRecvToDevice,
           receiveToDevice: sendRecvToDevice,
           turnServers: false,
+          rtcTransports: true,
           sendDelayedEvents: true,
           updateDelayedEvents: true,
           sendSticky: true,
@@ -196,18 +197,18 @@ export const initializeWidget = (
         // be otherwise)
         await Config.init();
         seedSettingsFromConfig(Config.get().media_quality);
-        await client.startClient({ clientWellKnownPollPeriod: 60 * 10 });
+        await client.startClient();
         return client;
       };
 
-      widget = { api, lazyActions, client: clientPromise() };
+      return { api, lazyActions, client: clientPromise() };
     } else {
       if (import.meta.env.MODE !== "test")
         logger.info("No widget API available");
-      widget = null;
+      return null;
     }
   } catch (e) {
     logger.warn("Continuing without the widget API", e);
-    widget = null;
+    return null;
   }
 };

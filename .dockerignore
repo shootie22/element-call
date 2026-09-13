@@ -15,3 +15,6 @@ playwright
 .venv
 test-results
 coverage
+agent-workspace
+.agents
+.codex

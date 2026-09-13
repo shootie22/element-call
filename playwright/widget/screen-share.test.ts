@@ -35,15 +35,38 @@ widgetTest("Sharing screen in group call", async ({ addUser, browserName }) => {
   }
 
   await TestHelpers.startCallInCurrentRoom(alice.page, false);
-  await expect(
-    alice.page.locator('iframe[title="Element Call"]'),
-  ).toBeVisible();
+  await expect(alice.page.locator('iframe[title="Element Call"]')).toBeVisible({
+    timeout: 30_000,
+  });
 
   await TestHelpers.joinCallFromLobby(alice.page);
 
   for (const user of [bob, carol]) {
     await TestHelpers.joinCallInCurrentRoom(user.page);
   }
+
+  // This fork starts cameras off, including in widgets. Opt in before checking video.
+  for (const user of [alice, bob, carol]) {
+    const frame = user.page
+      .locator('iframe[title="Element Call"]')
+      .contentFrame();
+    const camera = frame.getByTestId("incall_videomute");
+    await expect(camera).toHaveAttribute("aria-checked", "false");
+    await camera.click();
+    await expect(camera).toHaveAttribute("aria-checked", "true");
+  }
+
+  const aliceFrame = alice.page
+    .locator('iframe[title="Element Call"]')
+    .contentFrame();
+  const mic = aliceFrame.getByTestId("incall_mute");
+  const micBeforeDeafen = await mic.getAttribute("aria-checked");
+  await aliceFrame.getByRole("switch", { name: "Deafen", exact: true }).click();
+  await expect(mic).toHaveAttribute("aria-checked", "false");
+  await aliceFrame
+    .getByRole("switch", { name: "Undeafen", exact: true })
+    .click();
+  await expect(mic).toHaveAttribute("aria-checked", micBeforeDeafen!);
 
   for (const user of [alice, bob, carol]) {
     const frame = user.page

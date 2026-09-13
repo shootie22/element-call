@@ -6,14 +6,12 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { type IWidgetApiRequest } from "matrix-widget-api";
 import { logger } from "matrix-js-sdk/lib/logger";
 import {
   BehaviorSubject,
   combineLatest,
   distinctUntilChanged,
   firstValueFrom,
-  fromEvent,
   map,
   merge,
   Observable,
@@ -24,14 +22,11 @@ import {
 } from "rxjs";
 
 import { type MediaDevices, type MediaDevice } from "../state/MediaDevices";
-import { ElementWidgetActions, widget } from "../widget";
-import { muteAllAudio as muteAllAudioSetting } from "../settings/settings";
-import {
-  saveMicBeforeDeafen,
-  savedMicBeforeDeafen,
-} from "../components/CallFooterDeafenState";
+import { type DeviceMuteState, type HostBridge } from "../HostBridge";
 import { type ObservableScope } from "./ObservableScope";
 import { type Behavior, constant } from "./Behavior";
+
+import { muteAllAudio as muteAllAudioSetting } from "../settings/settings";
 
 interface MuteStateData {
   enabled$: Observable<boolean>;
@@ -185,6 +180,22 @@ export class MuteState<Label, Selected> {
 }
 
 export class MuteStates {
+  private micBeforeDeafen = false;
+
+  public setDeafened = (desired: boolean): void => {
+    if (desired === muteAllAudioSetting.getValue()) return;
+    if (desired) {
+      this.micBeforeDeafen = this.audio.enabled$.value;
+      this.audio.setEnabled$.value?.(false);
+    } else {
+      this.audio.setEnabled$.value?.(this.micBeforeDeafen);
+    }
+    muteAllAudioSetting.setValue(desired);
+  };
+
+  public toggleDeafen = (): void =>
+    this.setDeafened(!muteAllAudioSetting.getValue());
+
   /**
    *  True if the selected audio output device is an earpiece.
    *  Used to force-disable video when on earpiece.
@@ -221,102 +232,63 @@ export class MuteStates {
       audioEnabled: boolean;
       videoEnabled: boolean;
     },
+    hostBridge: HostBridge,
   ) {
-    if (widget !== null) {
-      // Sync our mute states with the hosting client
-      const widgetApiState$ = combineLatest(
-        [this.audio.enabled$, this.video.enabled$],
-        (audio, video) => ({ audio_enabled: audio, video_enabled: video }),
-      );
-      widgetApiState$.pipe(this.scope.bind()).subscribe((state) => {
-        widget!.api.transport
-          .send(ElementWidgetActions.DeviceMute, state)
-          .catch((e) =>
-            logger.warn("Could not send DeviceMute action to widget", e),
-          );
+    // Keep the host informed of our mute state
+    const muteState$ = combineLatest(
+      [this.audio.enabled$, this.video.enabled$],
+      (audio, video): DeviceMuteState => ({
+        audio_enabled: audio,
+        video_enabled: video,
+      }),
+    );
+    muteState$.pipe(this.scope.bind()).subscribe((state) => {
+      hostBridge
+        .notifyDeviceMute(state)
+        .catch((e) => logger.warn("Could not send mute state to the host", e));
+    });
+
+    muteAllAudioSetting.value$.pipe(this.scope.bind()).subscribe((deafened) => {
+      hostBridge
+        .notifyDeafen?.({ deafened })
+        .catch((e) =>
+          logger.warn("Could not send deafen state to the host", e),
+        );
+    });
+    hostBridge.deafen$?.pipe(this.scope.bind()).subscribe(({ data, reply }) => {
+      if (typeof data.deafened === "boolean") this.setDeafened(data.deafened);
+      reply({ deafened: muteAllAudioSetting.getValue() });
+    });
+
+    // And apply the changes the host asks for
+    hostBridge.deviceMute$
+      .pipe(
+        withLatestFrom(
+          muteState$,
+          this.audio.setEnabled$,
+          this.video.setEnabled$,
+        ),
+        this.scope.bind(),
+      )
+      .subscribe(([request, state, setAudioEnabled, setVideoEnabled]) => {
+        // First copy the current state into our new state
+        const newState = { ...state };
+        // Then apply whichever changes the host asked for
+        if (
+          typeof request.data.audio_enabled === "boolean" &&
+          setAudioEnabled !== null
+        ) {
+          newState.audio_enabled = request.data.audio_enabled;
+          setAudioEnabled(newState.audio_enabled);
+        }
+        if (
+          typeof request.data.video_enabled === "boolean" &&
+          setVideoEnabled !== null
+        ) {
+          newState.video_enabled = request.data.video_enabled;
+          setVideoEnabled(newState.video_enabled);
+        }
+        request.reply(newState);
       });
-
-      // Sync our deafen state with the hosting client
-      muteAllAudioSetting.value$
-        .pipe(this.scope.bind())
-        .subscribe((deafened) => {
-          widget!.api.transport
-            .send(ElementWidgetActions.Deafen, { deafened })
-            .catch((e) =>
-              logger.warn("Could not send Deafen action to widget", e),
-            );
-        });
-
-      // Also sync the hosting client's mute states back with ours
-      const muteActions$ = fromEvent(
-        widget.lazyActions,
-        ElementWidgetActions.DeviceMute,
-      ) as Observable<CustomEvent<IWidgetApiRequest>>;
-      muteActions$
-        .pipe(
-          withLatestFrom(
-            widgetApiState$,
-            this.audio.setEnabled$,
-            this.video.setEnabled$,
-          ),
-          this.scope.bind(),
-        )
-        .subscribe(([ev, state, setAudioEnabled, setVideoEnabled]) => {
-          // First copy the current state into our new state
-          const newState = { ...state };
-          // Update new state if there are any requested changes from the widget
-          // action in `ev.detail.data`.
-          if (
-            ev.detail.data.audio_enabled != null &&
-            typeof ev.detail.data.audio_enabled === "boolean" &&
-            setAudioEnabled !== null
-          ) {
-            newState.audio_enabled = ev.detail.data.audio_enabled;
-            setAudioEnabled(newState.audio_enabled);
-          }
-          if (
-            ev.detail.data.video_enabled != null &&
-            typeof ev.detail.data.video_enabled === "boolean" &&
-            setVideoEnabled !== null
-          ) {
-            newState.video_enabled = ev.detail.data.video_enabled;
-            setVideoEnabled(newState.video_enabled);
-          }
-          widget!.api.transport.reply(ev.detail, newState);
-        });
-
-      // Handle deafen widget actions from the hosting client
-      const deafenActions$ = fromEvent(
-        widget.lazyActions,
-        ElementWidgetActions.Deafen,
-      ) as Observable<CustomEvent<IWidgetApiRequest>>;
-      deafenActions$
-        .pipe(withLatestFrom(this.audio.setEnabled$), this.scope.bind())
-        .subscribe(([ev, setAudioEnabled]) => {
-          const desired = ev.detail.data.deafened;
-          const isDeafened = muteAllAudioSetting.getValue();
-          // A missing/non-boolean value is a read-only state query (used by the
-          // host to pull the current deafen state): report it without changing
-          // anything. Without this guard, an absent value would fall through to
-          // the un-deafen branch below and clobber the user's state.
-          if (typeof desired !== "boolean") {
-            widget!.api.transport.reply(ev.detail, { deafened: isDeafened });
-            return;
-          }
-          if (desired === isDeafened) {
-            widget!.api.transport.reply(ev.detail, { deafened: desired });
-            return;
-          }
-          if (desired) {
-            saveMicBeforeDeafen(this.audio.enabled$.getValue());
-            setAudioEnabled?.(false);
-            muteAllAudioSetting.setValue(true);
-          } else {
-            setAudioEnabled?.(savedMicBeforeDeafen);
-            muteAllAudioSetting.setValue(false);
-          }
-          widget!.api.transport.reply(ev.detail, { deafened: desired });
-        });
-    }
   }
 }

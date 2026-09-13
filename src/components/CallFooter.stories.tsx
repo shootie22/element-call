@@ -16,10 +16,12 @@ import inCallViewStyles from "../room/InCallView.module.css";
 import { useStaticViewModel } from "../state/ViewModel";
 import { ReactionsSenderContext } from "../reactions/useReactionsSender";
 import { type ReactionOption } from "../reactions";
-import { type GridMode } from "../state/CallViewModel/CallViewModel";
 import { MediaDevicesContext } from "../MediaDevicesContext";
 import { MediaDevices } from "../state/MediaDevices";
 import { globalScope } from "../state/ObservableScope";
+import { constant } from "../state/Behavior";
+import { type LayoutMode } from "../state/LayoutSwitchViewModel";
+
 // consts for tests
 const reactionIdentifier = "@user:example.com:DEVICE";
 const reactionData = {
@@ -27,11 +29,14 @@ const reactionData = {
   reactions$: new BehaviorSubject({}),
 };
 
-const mediaDevices = new MediaDevices(globalScope);
+const mediaDevices = new MediaDevices(globalScope, {
+  controlledAudioDevices: false,
+});
 
 /**
  * A wrapper component that is used for:
  *  - exposing the snapshot via props so the storybook documents the snapshot properties (basically unpack them form the vm)
+ *  - constructing the layout switch view model
  *  - Add additional react context
  * The paraeters are all params from the FooterSnapshot,
  * the Snapshot of the vm, the wrapper will create a mocked vm from it and pass it to the CallFooter.
@@ -40,11 +45,18 @@ const mediaDevices = new MediaDevices(globalScope);
  */
 function CallFooterStoryWrapper({
   children,
+  layout,
+  setLayout,
   ...vmSnapshot
-}: FooterSnapshot & {
+}: Omit<FooterSnapshot, "layoutSwitchVm"> & {
   children?: false | JSX.Element | JSX.Element[] | undefined;
+  layout: LayoutMode | null;
+  setLayout: (value: LayoutMode) => void;
 }): ReactNode {
-  const vm = useStaticViewModel(vmSnapshot);
+  const vm = useStaticViewModel({
+    ...vmSnapshot,
+    layoutSwitchVm: layout && { layout$: constant(layout), setLayout },
+  });
   return (
     <MediaDevicesContext value={mediaDevices}>
       <div className={inCallViewStyles.inRoom}>
@@ -62,28 +74,50 @@ function CallFooterStoryWrapper({
   );
 }
 
-const meta = {
-  component: CallFooterStoryWrapper,
-} satisfies Meta<typeof CallFooterStoryWrapper>;
-
-export default meta;
-type Story = StoryObj<typeof meta>;
-
 const fnArgType = {
   control: { type: "select" as const },
   options: ["MockedCallback", "undefined"],
   mapping: { MockedCallback: fn(), undefined: undefined },
 };
 
+const meta = {
+  component: CallFooterStoryWrapper,
+  argTypes: {
+    layout: {
+      control: "radio",
+      options: ["grid", "spotlight"] satisfies LayoutMode[],
+    },
+    audioOutputSwitcher: {
+      control: "select",
+      options: ["NoOutputCallback", "speaker", "earpiece"],
+      table: { defaultValue: { summary: "NoOutputCallback" } },
+      mapping: {
+        NoOutputCallback: undefined,
+        // This is inverersed (speaker<->earpice) because the switcher object stores the target output, not the current one.
+        speaker: { targetOutput: "earpiece", switch: fn() },
+        earpiece: { targetOutput: "speaker", switch: fn() },
+      },
+    },
+    toggleScreenSharing: fnArgType,
+    openSettings: fnArgType,
+    toggleAudio: fnArgType,
+    toggleVideo: fnArgType,
+    hangup: fnArgType,
+  },
+} satisfies Meta<typeof CallFooterStoryWrapper>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
 export const Default: Story = {
   args: {
     showLogo: false,
-    layoutMode: "grid",
+    layout: "grid",
+    setLayout: fn(),
     audioEnabled: true,
     audioBusy: false,
     videoEnabled: true,
     videoBusy: false,
-    setLayoutMode: fn(),
     openSettings: fn(),
     toggleAudio: fn(),
     toggleVideo: fn(),
@@ -97,6 +131,7 @@ export const Default: Story = {
     showFooter: true,
     hideControls: false,
     asOverlay: false,
+    showModals: true,
     sharingScreen: false,
     audioOutputSwitcher: undefined,
     reactionIdentifier: undefined,
@@ -112,29 +147,6 @@ export const Default: Story = {
   },
   parameters: {
     layout: "fullscreen",
-  },
-  argTypes: {
-    layoutMode: {
-      control: "radio",
-      options: ["grid", "spotlight"] satisfies GridMode[],
-    },
-    audioOutputSwitcher: {
-      control: "select",
-      options: ["NoOutputCallback", "speaker", "earpiece"],
-      table: { defaultValue: { summary: "NoOutputCallback" } },
-      mapping: {
-        NoOutputCallback: undefined,
-        // This is inverersed (speaker<->earpice) because the switcher object stores the target output, not the current one.
-        speaker: { targetOutput: "earpiece", switch: fn() },
-        earpiece: { targetOutput: "speaker", switch: fn() },
-      },
-    },
-    toggleScreenSharing: fnArgType,
-    setLayoutMode: fnArgType,
-    openSettings: fnArgType,
-    toggleAudio: fnArgType,
-    toggleVideo: fnArgType,
-    hangup: fnArgType,
   },
 };
 
@@ -196,7 +208,7 @@ export const AudioVideoEnabled: Story = {
 
     const spotlightRadio = canvas.getByRole("radio", { name: "Spotlight" });
     await userEvent.click(spotlightRadio);
-    await expect(args.setLayoutMode).toHaveBeenCalledWith("spotlight");
+    await expect(args.setLayout).toHaveBeenCalledWith("spotlight");
 
     const micButtonMute = canvas.getByRole("switch", {
       name: "Mute microphone",
@@ -227,14 +239,14 @@ export const SpotlightMode: Story = {
   ...Default,
   args: {
     ...Default.args,
-    layoutMode: "spotlight",
+    layout: "spotlight",
   },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
 
     const spotlightRadio = canvas.getByRole("radio", { name: "Grid" });
     await userEvent.click(spotlightRadio);
-    await expect(args.setLayoutMode).toHaveBeenCalledWith("grid");
+    await expect(args.setLayout).toHaveBeenCalledWith("grid");
   },
 };
 
@@ -266,7 +278,7 @@ export const Pip: Story = {
   args: {
     ...Default.args,
     buttonSize: "md",
-    layoutMode: undefined,
+    layout: null,
   },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
@@ -350,7 +362,7 @@ export const Lobby: Story = {
     ...Default.args,
     showLogo: false,
     openSettings: undefined,
-    setLayoutMode: undefined,
+    layout: null,
     toggleScreenSharing: undefined,
   },
   parameters: {
@@ -364,7 +376,7 @@ export const LobbyMobile: Story = {
     ...Default.args,
     showLogo: false,
 
-    setLayoutMode: undefined,
+    layout: null,
     toggleScreenSharing: undefined,
   },
   globals: {
@@ -381,7 +393,7 @@ export const LobbyRecentButton: Story = {
     ...Default.args,
     children: <Link>Back To Recents</Link>,
     showLogo: false,
-    setLayoutMode: undefined,
+    layout: null,
     toggleScreenSharing: undefined,
   },
   parameters: {
@@ -395,7 +407,7 @@ export const LobbyRecentButtonMobile: Story = {
     ...Default.args,
     children: <Link>Back To Recents</Link>,
     showLogo: false,
-    setLayoutMode: undefined,
+    layout: null,
     toggleScreenSharing: undefined,
   },
   globals: {
@@ -403,5 +415,22 @@ export const LobbyRecentButtonMobile: Story = {
   },
   parameters: {
     ...Default.parameters,
+  },
+};
+
+export const Deafened: Story = {
+  ...Default,
+  args: {
+    ...Default.args,
+    audioEnabled: false,
+    deafenEnabled: true,
+    toggleDeafen: fn(),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const button = canvas.getByRole("switch", { name: "Undeafen" });
+    await expect(button).toBeVisible();
+    await userEvent.click(button);
+    await expect(args.toggleDeafen).toHaveBeenCalledOnce();
   },
 };

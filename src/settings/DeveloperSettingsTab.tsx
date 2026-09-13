@@ -54,6 +54,39 @@ import { MatrixRTCMode } from "../config/ConfigOptions";
 import styles from "./DeveloperSettingsTab.module.css";
 import { useUrlParams } from "../UrlParams";
 import { getSFUConfigWithOpenID } from "../livekit/openIDSFU";
+import { useBehavior } from "../useBehavior";
+import { type ViewModel } from "../state/ViewModel.ts";
+
+/**
+ * The state of MatrixRTC's media key rotation.
+ */
+export interface KeyRotationInfo {
+  /** Whether the call is large enough that MatrixRTC has stopped rotating the media key. */
+  suppressed: boolean;
+  participantCount: number;
+}
+
+/**
+ * The Snapshot combines all fields the developer settings tab needs from the
+ * surrounding call. Everything else in this tab is read from the settings store
+ * or the environment directly.
+ */
+export interface DeveloperSettingsSnapshot {
+  /** The media key rotation state, or `null` when we are not in a call. */
+  keyRotation: KeyRotationInfo | null;
+}
+
+/**
+ * Shows whether the call is large enough that MatrixRTC has stopped rotating the media key.
+ */
+const KeyRotationStatus: FC<{ info: KeyRotationInfo }> = ({ info }) => (
+  <p>
+    Media key rotation:{" "}
+    {info.suppressed
+      ? `suppressed, participant limit reached (${info.participantCount} participants)`
+      : `active (${info.participantCount} participants)`}
+  </p>
+);
 
 interface Props {
   client: MatrixClient;
@@ -65,6 +98,7 @@ interface Props {
     livekitAlias?: string;
   }[];
   env: ImportMetaEnv;
+  vm: ViewModel<DeveloperSettingsSnapshot>;
 }
 
 export const DeveloperSettingsTab: FC<Props> = ({
@@ -72,8 +106,10 @@ export const DeveloperSettingsTab: FC<Props> = ({
   livekitRooms,
   roomId,
   env,
+  vm,
 }) => {
   const { t } = useTranslation();
+  const keyRotation = useBehavior(vm.keyRotation$);
   const [duplicateTiles, setDuplicateTiles] = useSetting(duplicateTilesSetting);
   const [debugTileLayout, setDebugTileLayout] = useSetting(
     debugTileLayoutSetting,
@@ -225,6 +261,8 @@ export const DeveloperSettingsTab: FC<Props> = ({
           id: client.getDeviceId() || "unknown",
         })}
       </p>
+      {keyRotation !== null && <KeyRotationStatus info={keyRotation} />}
+      <Separator />
       <FieldRow>
         <InputField
           id="duplicateTiles"
@@ -374,27 +412,12 @@ export const DeveloperSettingsTab: FC<Props> = ({
           <ErrorMessage>{customLivekitUrlUpdateError}</ErrorMessage>
         )}
       </EditInPlace>
+      <Separator />
       <Heading as="h3" type="body" weight="semibold" size="lg">
         {t("developer_mode.matrixRTCMode.title")}
       </Heading>
       {matrixRTCModeForced && <p>Your deployment overrides the mode.</p>}
       <Form>
-        <InlineField
-          name={matrixRTCModeRadioGroup}
-          control={
-            <RadioControl
-              checked={effectiveMatrixRTCMode === MatrixRTCMode.Legacy}
-              value={MatrixRTCMode.Legacy}
-              disabled={matrixRTCModeForced}
-              onChange={onMatrixRTCModeChange}
-            />
-          }
-        >
-          <Label>{t("developer_mode.matrixRTCMode.Legacy.label")}</Label>
-          <HelpMessage>
-            {t("developer_mode.matrixRTCMode.Legacy.description")}
-          </HelpMessage>
-        </InlineField>
         <InlineField
           name={matrixRTCModeRadioGroup}
           control={
@@ -462,12 +485,13 @@ export const DeveloperSettingsTab: FC<Props> = ({
           </ul>
         </div>
       ))}
-      <p>{t("developer_mode.environment_variables")}</p>
-      <pre>{JSON.stringify(env, null, 2)}</pre>
-      <p>{t("developer_mode.url_params")}</p>
-      <pre>{JSON.stringify(urlParams, null, 2)}</pre>
       <Separator />
       <AudioProcessingSettings />
+      <Separator />
+      <p>{t("developer_mode.environment_variables")}</p>
+      <pre className={styles.pre}>{JSON.stringify(env, null, 2)}</pre>
+      <p>{t("developer_mode.url_params")}</p>
+      <pre className={styles.pre}>{JSON.stringify(urlParams, null, 2)}</pre>
     </>
   );
 };

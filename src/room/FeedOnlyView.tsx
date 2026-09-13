@@ -13,7 +13,8 @@ import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
 import { type MemberMediaViewModel } from "../state/media/MemberMediaViewModel";
 import { useBehavior } from "../useBehavior";
 import { MediaView } from "../tile/MediaView";
-import { ElementWidgetActions, widget } from "../widget";
+import { useHostBridge } from "../HostBridge";
+import { useFeedDisabled } from "../state/disabledFeeds";
 import styles from "./FeedOnlyView.module.css";
 
 interface Props {
@@ -29,14 +30,15 @@ interface Props {
  * double-clicking a feed asks the host to expand to the full call UI.
  */
 export const FeedOnlyView: FC<Props> = ({ vm, includeSelf }) => {
+  const hostBridge = useHostBridge();
   const media = useBehavior(vm.feedOnlyMedia$);
   const feeds = includeSelf ? media : media.filter((m) => !m.local);
 
   const onExpand = useCallback(() => {
-    widget?.api.transport
-      .send(ElementWidgetActions.Expand, {})
+    hostBridge
+      .expand?.()
       .catch((e) => logger.warn("Could not send Expand action to host", e));
-  }, []);
+  }, [hostBridge]);
 
   return (
     <div className={styles.feedOnly}>
@@ -53,6 +55,7 @@ const FeedTile: FC<{ media: MemberMediaViewModel; onExpand: () => void }> = ({
 }) => {
   const [ref, bounds] = useMeasure();
   const video = useBehavior(media.video$);
+  const feedDisabled = useFeedDisabled(media.id);
   const displayName = useBehavior(media.displayName$);
   const mxcAvatarUrl = useBehavior(media.mxcAvatarUrl$);
   const unencryptedWarning = useBehavior(media.unencryptedWarning$);
@@ -66,6 +69,7 @@ const FeedTile: FC<{ media: MemberMediaViewModel; onExpand: () => void }> = ({
       targetWidth={bounds.width}
       targetHeight={bounds.height}
       video={video}
+      feedDisabled={!media.local && feedDisabled}
       videoFit={media.type === "screen share" ? "contain" : "cover"}
       mirror={media.type === "user" && media.local}
       userId={media.userId}

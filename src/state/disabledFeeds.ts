@@ -30,11 +30,6 @@ function subscribe(listener: () => void): () => void {
   return () => void listeners.delete(listener);
 }
 
-/** Whether the feed with the given media id is currently disabled. */
-export function isFeedDisabled(id: string): boolean {
-  return disabledIds.has(id);
-}
-
 /** Toggle whether the feed with the given media id is disabled. */
 export function toggleFeedDisabled(id: string): void {
   if (disabledIds.has(id)) disabledIds.delete(id);

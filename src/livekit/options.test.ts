@@ -6,7 +6,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { describe, expect, it, vi } from "vitest";
-import { VideoPresets } from "livekit-client";
+import { VideoPresets, type VideoPreset } from "livekit-client";
 
 import { buildLiveKitOptions, getLiveKitOptions } from "./options";
 import { Config } from "../config/Config";
@@ -46,17 +46,30 @@ describe("buildLiveKitOptions", () => {
   });
 
   it("applies video resolution and encoding from config", () => {
-    const opts = buildLiveKitOptions({
-      video: {
-        max_resolution: 1080,
-        max_bitrate: 3_000_000,
-        max_framerate: 60,
-      },
+    const baseVideoConfig = {
+      max_resolution: 1080,
+      max_bitrate: 3_000_000,
+      max_framerate: 60,
+    };
+    const opts1080 = buildLiveKitOptions({
+      video: baseVideoConfig,
     });
-    expect(opts.videoCaptureDefaults?.resolution).toEqual(
+    const opts1440 = buildLiveKitOptions({
+      video: { ...baseVideoConfig, max_resolution: 1440 },
+    });
+    const opts2160 = buildLiveKitOptions({
+      video: { ...baseVideoConfig, max_resolution: 2160 },
+    });
+    expect(opts1080.videoCaptureDefaults?.resolution).toEqual(
       VideoPresets.h1080.resolution,
     );
-    expect(opts.publishDefaults?.videoEncoding).toEqual({
+    expect(opts1440.videoCaptureDefaults?.resolution).toEqual(
+      VideoPresets.h1440.resolution,
+    );
+    expect(opts2160.videoCaptureDefaults?.resolution).toEqual(
+      VideoPresets.h2160.resolution,
+    );
+    expect(opts1080.publishDefaults?.videoEncoding).toEqual({
       maxBitrate: 3_000_000,
       maxFramerate: 60,
     });
@@ -86,6 +99,41 @@ describe("buildLiveKitOptions", () => {
       maxBitrate: 5_000_000,
       maxFramerate: 30,
     });
+  });
+
+  it("maps low resolutions to the closest preset, rounding up", () => {
+    const expectations: [number, VideoPreset][] = [
+      [180, VideoPresets.h180],
+      [360, VideoPresets.h360],
+      [480, VideoPresets.h540],
+      [540, VideoPresets.h540],
+      [720, VideoPresets.h720],
+    ];
+    for (const [height, preset] of expectations) {
+      const opts = buildLiveKitOptions({ video: { max_resolution: height } });
+      expect(opts.videoCaptureDefaults?.resolution).toEqual(preset.resolution);
+    }
+  });
+
+  it("screen share layers fall back to max_framerate, then 30", () => {
+    const fromMax = buildLiveKitOptions({
+      screen_share: {
+        max_framerate: 15,
+        simulcast_layers: [{ height: 540, bitrate: 1_000_000 }],
+      },
+    });
+    expect(
+      fromMax.publishDefaults?.screenShareSimulcastLayers?.[0],
+    ).toMatchObject({ encoding: { maxFramerate: 15 } });
+
+    const fromDefault = buildLiveKitOptions({
+      screen_share: {
+        simulcast_layers: [{ height: 540, bitrate: 1_000_000 }],
+      },
+    });
+    expect(
+      fromDefault.publishDefaults?.screenShareSimulcastLayers?.[0],
+    ).toMatchObject({ encoding: { maxFramerate: 30 } });
   });
 
   it("applies custom video simulcast layers", () => {
