@@ -50,6 +50,15 @@ test("holds a call between two components on one page", async ({ page }) => {
       timeout: 60_000,
     });
 
+  // This fork starts cameras off, and the one-on-one layout hides your own
+  // tile while your camera is off. Opt in so both tiles are drawn.
+  for (const index of [0, 1]) {
+    const camera = panes.nth(index).getByTestId("incall_videomute");
+    await expect(camera).toHaveAttribute("aria-checked", "false");
+    await camera.click();
+    await expect(camera).toHaveAttribute("aria-checked", "true");
+  }
+
   for (const index of [0, 1])
     await panes.nth(index).getByTestId("lobby_joinCall").click();
 
