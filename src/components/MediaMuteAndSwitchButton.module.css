@@ -49,3 +49,12 @@ Please see LICENSE in the repository root for full details.
     transform: rotate(360deg);
   }
 }
+
+/* On phone-sized call views the chevron that opens the device switcher makes
+  the footer button row overflow the viewport edge. The mute button stays;
+  device switching remains available through the settings dialog. */
+@container element-call (max-width: 500px) {
+  .menuButton {
+    display: none;
+  }
+}
