@@ -319,6 +319,31 @@ export const NoControlsWithLogo: Story = {
   },
 };
 
+export const PipWithDeviceOptions: Story = {
+  ...Pip,
+  args: {
+    ...WithAudioAndVideoOptions.args,
+    buttonSize: "md",
+    layout: null,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const endCall = canvas.getByRole("button", { name: "End call" });
+    const controls = [
+      ...canvas.getAllByRole("switch"),
+      canvas.getByRole("button", { name: "Microphone" }),
+      canvas.getByRole("button", { name: "Camera" }),
+      canvas.getByRole("button", { name: "Screen sharing" }),
+    ];
+    for (const control of controls) {
+      await expect(control).toHaveAttribute("data-size", "md");
+      await expect(control.getBoundingClientRect().height).toBe(
+        endCall.getBoundingClientRect().height,
+      );
+    }
+  },
+};
+
 export const DebugData: Story = {
   ...Default,
   args: {

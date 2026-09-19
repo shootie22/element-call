@@ -168,6 +168,7 @@ export const CallFooter: FC<FooterProps> = ({
     // showForScreenWidth="wide" in the settingsLogoContainer is used instead.
     buttons.push(
       <SettingsButton
+        size={buttonSize}
         key="settings"
         showForScreenWidth="narrow"
         onClick={openSettings}
@@ -179,6 +180,7 @@ export const CallFooter: FC<FooterProps> = ({
   if ((audioOptions?.length ?? 0) > 0) {
     buttons.push(
       <MediaMuteAndSwitchButton
+        size={buttonSize}
         title={"Mic Source"}
         key="audio"
         iconsAndLabels="audio"
@@ -208,6 +210,7 @@ export const CallFooter: FC<FooterProps> = ({
   if ((videoOptions?.length ?? 0) > 0 || toggleVideo !== undefined) {
     buttons.push(
       <MediaMuteAndSwitchButton
+        size={buttonSize}
         title={"Camera Source"}
         key="video"
         iconsAndLabels="video"
@@ -239,6 +242,7 @@ export const CallFooter: FC<FooterProps> = ({
   if (toggleScreenSharing !== undefined) {
     buttons.push(
       <MediaMuteAndSwitchButton
+        size={buttonSize}
         title={t("settings.screen_share_header", "Screen sharing")}
         key="share_screen"
         className={styles.shareScreen}

@@ -23,6 +23,9 @@ Please see LICENSE in the repository root for full details.
   width: 40px;
   background-color: transparent !important;
 }
+.menuButton[data-size="md"] {
+  width: var(--cpd-space-8x);
+}
 .itemIcon {
   color: var(--cpd-color-text-secondary);
 }

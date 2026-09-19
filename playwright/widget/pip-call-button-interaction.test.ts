@@ -32,6 +32,12 @@ widgetTest("Footer interaction in PiP", async ({ addUser, browserName }) => {
   ).toBeVisible();
 
   await TestHelpers.joinCallFromLobby(valere.page);
+  // Cameras start off in this fork. Enable it before testing the stop control.
+  await valere.page
+    .locator('iframe[title="Element Call"]')
+    .contentFrame()
+    .getByRole("switch", { name: "Start video" })
+    .click();
   // wait a bit so that the PIP has rendered
   await valere.page.waitForTimeout(600);
 
@@ -53,6 +59,18 @@ widgetTest("Footer interaction in PiP", async ({ addUser, browserName }) => {
     ).toBeVisible();
     await expect(audioBtn).toBeVisible();
     await expect(videoBtn).toBeVisible();
+    const endCall = iFrame.getByRole("button", { name: "End call" });
+    for (const button of [
+      audioBtn,
+      videoBtn,
+      iFrame.getByRole("switch", { name: "Share screen", exact: true }),
+      iFrame.getByRole("switch", { name: "Deafen", exact: true }),
+    ]) {
+      await expect(button).toHaveAttribute("data-size", "md");
+      await expect
+        .poll(async () => (await button.boundingBox())!.height)
+        .toBe((await endCall.boundingBox())!.height);
+    }
     await expect(audioBtn).toHaveAccessibleName("Mute microphone");
     await expect(audioBtn).toBeChecked();
     await expect(videoBtn).toHaveAccessibleName("Stop video");

@@ -44,6 +44,21 @@ describe("MediaMuteAndSwitchButton", () => {
     expect(container).toMatchSnapshot();
   });
 
+  test.each(["audio", "video", "screenShare"] as const)(
+    "%s uses compact sizing for both controls",
+    (iconsAndLabels) => {
+      const { getByRole } = renderComponent(
+        <MediaMuteAndSwitchButton
+          title="Media"
+          iconsAndLabels={iconsAndLabels}
+          size="md"
+        />,
+      );
+      expect(getByRole("switch")).toHaveAttribute("data-size", "md");
+      expect(getByRole("button")).toHaveAttribute("data-size", "md");
+    },
+  );
+
   test("renders correct audio and video labels", () => {
     const renderLabels = (
       type: "video" | "audio",

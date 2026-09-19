@@ -41,6 +41,7 @@ export interface MenuOptions {
 
 export interface MediaMuteAndSwitchButtonProps {
   className?: string;
+  size?: "md" | "lg";
   /** The title used in the Switcher modal. */
   title: string;
   /** If the Mute button is enabled */
@@ -68,6 +69,7 @@ const BLUR_ID = "blur";
 
 export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
   className,
+  size = "lg",
   title,
   enabled,
   busy,
@@ -98,6 +100,7 @@ export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
     case "video":
       button = (
         <VideoButton
+          size={size}
           enabled={enabled ?? false}
           busy={isBusy}
           onClick={(e) => {
@@ -122,6 +125,7 @@ export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
     case "audio":
       button = (
         <MicButton
+          size={size}
           enabled={enabled ?? false}
           busy={isBusy}
           onClick={(e) => {
@@ -137,7 +141,7 @@ export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
     case "screenShare":
       button = (
         <ShareScreenButton
-          size="lg"
+          size={size}
           enabled={enabled ?? false}
           onClick={(e) => {
             onMuteClick?.();
@@ -201,7 +205,7 @@ export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
             })}
             Icon={menuOpen ? ChevronUpIcon : ChevronDownIcon}
             kind={"tertiary"}
-            size="lg"
+            size={size}
             aria-label={optionsButtonLabel}
           />
         }
