@@ -194,8 +194,6 @@ services:
       - "8448:8448"
     extra_hosts:
       - "host.docker.internal:host-gateway"
-      - "auth-server:127.0.0.1"
-      - "auth-server-1:127.0.0.1"
     depends_on:
       - synapse
     networks:
