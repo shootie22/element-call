@@ -51,7 +51,9 @@ widgetTest("Sharing screen in group call", async ({ addUser, browserName }) => {
       .locator('iframe[title="Element Call"]')
       .contentFrame();
     const camera = frame.getByTestId("incall_videomute");
-    await expect(camera).toHaveAttribute("aria-checked", "false");
+    await expect(camera).toHaveAttribute("aria-checked", "false", {
+      timeout: 30_000,
+    });
     await camera.click();
     await expect(camera).toHaveAttribute("aria-checked", "true");
   }
@@ -148,5 +150,22 @@ widgetTest("Sharing screen in group call", async ({ addUser, browserName }) => {
     await expect(frame.getByTestId("screenshare-indicator")).toHaveCount(0);
     await expect(frame.getByRole("button", { name: "Next" })).not.toBeVisible();
     await expect(frame.getByRole("button", { name: "Back" })).not.toBeVisible();
+
+    const shares = frame.locator('video[data-lk-source="screen_share"]');
+    const shareTile = shares
+      .first()
+      .locator("xpath=ancestor::*[@data-testid='videoTile']");
+    const before = await shares.first().boundingBox();
+    await shareTile.click();
+    await expect(frame.getByRole("radio", { name: "Spotlight" })).toBeChecked();
+    await expect
+      .poll(async () => (await shares.first().boundingBox())!.width)
+      .toBeGreaterThan(before!.width);
+    await shareTile.click();
+    await expect(frame.getByRole("radio", { name: "Spotlight" })).toBeChecked();
+    await expect(shares).toHaveCount(2);
+    await expect
+      .poll(async () => (await shares.first().boundingBox())!.width)
+      .toBeCloseTo(before!.width, 0);
   }
 });

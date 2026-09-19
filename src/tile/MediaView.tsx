@@ -461,6 +461,15 @@ export const MediaView: FC<Props> = ({
         return;
       }
 
+      // Tile controls (including portalled menus) must not change the focus.
+      if (
+        !event.currentTarget.contains(event.target as Node) ||
+        (event.target as Element).closest(
+          "button, a, input, select, [role='slider']",
+        )
+      )
+        return;
+
       onClick?.(event);
     },
     [onClick],

@@ -341,12 +341,75 @@ describe.each(modes)("CallViewModel (%s mode)", (mode) => {
             },
             n: () => {
               expect(vm.focusedMediaId$.value).toBeNull();
+              expect(vm.layout$.value.type).toBe("grid");
             },
           });
         },
       );
     });
   });
+
+  test.each(["grid", "spotlight"] as const)(
+    "unfocusing a share restores %s after switching between two shares",
+    (initialLayout) => {
+      withTestScheduler(({ schedule }) => {
+        withCallViewModel(
+          {
+            remoteParticipants$: constant([aliceParticipant, bobParticipant]),
+            rtcMembers$: constant([
+              localRtcMember,
+              aliceRtcMember,
+              bobRtcMember,
+            ]),
+            sharingScreen: new Map([
+              [aliceParticipant, constant(true)],
+              [bobParticipant, constant(true)],
+            ]),
+          },
+          (vm) => {
+            schedule("-a", {
+              a: () => {
+                vm.setGridMode(initialLayout);
+                const before = vm.layout$.value;
+                const gridBefore =
+                  before.type === "grid"
+                    ? before.grid.map((tile) => tile.media$.value.id)
+                    : undefined;
+                const shares = [
+                  `${aliceId}:0:screen-share`,
+                  `${bobId}:0:screen-share`,
+                ];
+                for (const share of shares) {
+                  vm.focusMedia(share);
+                  const focused = vm.layout$.value;
+                  expect(focused.type).toBe("spotlight-landscape");
+                  if (focused.type === "spotlight-landscape") {
+                    expect(
+                      focused.spotlight.media$.value.map((m) => m.id),
+                    ).toEqual([share]);
+                  }
+                }
+                vm.focusMedia(null);
+                expect(vm.focusedMediaId$.value).toBeNull();
+                const restored = vm.layout$.value;
+                expect(restored.type).toBe(before.type);
+                if (restored.type === "grid") {
+                  expect(
+                    restored.grid.map((tile) => tile.media$.value.id),
+                  ).toEqual(gridBefore);
+                }
+                if (restored.type === "spotlight-landscape") {
+                  expect(
+                    restored.spotlight.media$.value.map((m) => m.id),
+                  ).toEqual(shares);
+                }
+              },
+            });
+          },
+        );
+      });
+    },
+  );
 
   test("remote screen sharing activates spotlight layout", () => {
     withTestScheduler(({ behavior, schedule, expectObservable }) => {

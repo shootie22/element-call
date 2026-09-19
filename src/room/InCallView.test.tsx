@@ -21,6 +21,7 @@ import { BrowserRouter } from "react-router-dom";
 import { TooltipProvider } from "@vector-im/compound-web";
 import { RoomContext, useLocalParticipant } from "@livekit/components-react";
 import userEvent from "@testing-library/user-event";
+import { useState, type ReactNode } from "react";
 
 import { ActiveCall, InCallView } from "./InCallView";
 import {
@@ -52,6 +53,8 @@ import { type MatrixInfo } from "./VideoPreview";
 import { ProcessorProvider } from "../livekit/TrackProcessorContext";
 import { initializeWidget } from "../widget";
 import { RootElementProvider } from "../RootElementContext";
+import * as CallViewModelModule from "../state/CallViewModel/CallViewModel";
+import { constant } from "../state/Behavior";
 
 initializeWidget();
 vi.hoisted(
@@ -263,6 +266,76 @@ describe("ActiveCall", () => {
     );
     // Rendering at all proves ActiveCall created all of its view models
     expect(await findByTestId("incall_leave")).toBeVisible();
+  });
+
+  it("keeps audio mounted when the host changes feed-only mode", async () => {
+    const mediaDevices = mockMediaDevices({});
+    const muteStates = mockMuteStates();
+    const { rtcSession, matrixRoom } = getBasicRTCSession([local, alice]);
+    const room = mockLivekitRoom({ localParticipant });
+    const onLeft = (): void => {};
+    const e2eeSystem = { kind: E2eeType.NONE } as const;
+    const session = rtcSession.asMockedSession();
+    const { vm } = getBasicCallViewModelEnvironment(
+      [local, alice],
+      undefined,
+      mediaDevices,
+    );
+    const createVm = vi
+      .spyOn(CallViewModelModule, "createCallViewModel$")
+      .mockReturnValue({
+        ...vm,
+        livekitRoomItems$: constant([
+          {
+            livekitRoom: room,
+            url: "https://livekit.example.org",
+            participants: [remoteParticipant.identity],
+          },
+        ]),
+      });
+    const user = userEvent.setup();
+    const { getByRole, findAllByText, findByTestId } = render(<Host />);
+    await findByTestId("incall_leave");
+    const audioElements = await findAllByText("mocked: MatrixAudioRenderer");
+    for (let i = 0; i < 2; i++) {
+      await user.click(getByRole("button", { name: "Change host view" }));
+      const current = await findAllByText("mocked: MatrixAudioRenderer");
+      expect(current).toHaveLength(audioElements.length);
+      current.forEach((element, index) =>
+        expect(element).toBe(audioElements[index]),
+      );
+    }
+    createVm.mockRestore();
+
+    function Host(): ReactNode {
+      const [enabled, setEnabled] = useState(false);
+      return (
+        <BrowserRouter>
+          <MediaDevicesContext value={mediaDevices}>
+            <ProcessorProvider>
+              <TooltipProvider>
+                <RoomContext value={room}>
+                  <button onClick={() => setEnabled(!enabled)}>
+                    Change host view
+                  </button>
+                  <ActiveCall
+                    client={matrixRoom.client}
+                    rtcSession={session}
+                    matrixRoom={matrixRoom}
+                    muteStates={muteStates}
+                    matrixInfo={matrixInfo}
+                    onShareClick={null}
+                    e2eeSystem={e2eeSystem}
+                    onLeft={onLeft}
+                    feedOnly={{ enabled, includeSelf: true }}
+                  />
+                </RoomContext>
+              </TooltipProvider>
+            </ProcessorProvider>
+          </MediaDevicesContext>
+        </BrowserRouter>
+      );
+    }
   });
 
   it("lays the call out for the size of its root element", async () => {

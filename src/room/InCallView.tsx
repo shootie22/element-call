@@ -212,28 +212,24 @@ export const ActiveCall: FC<ActiveCallProps> = (props) => {
   ]);
 
   if (vm === null) return null;
-  const audioRenderer = <CallAudioRenderer vm={vm} />;
-  // Feed-only embedding mode: render just the stacked video feeds, no call UI.
-  if (feedOnly?.enabled)
-    return (
-      <>
-        {audioRenderer}
-        <FeedOnlyView vm={vm} includeSelf={feedOnly.includeSelf} />
-      </>
-    );
-  if (footerVm === null) return null;
-  if (developerSettingsVm === null) return null;
-
+  // Audio must keep its identity when the host changes the presentation.
+  // Remounting playback can require a new user gesture in the browser.
   return (
-    <ReactionsSenderProvider vm={vm} rtcSession={props.rtcSession}>
-      {audioRenderer}
-      <InCallView
-        {...props}
-        vm={vm}
-        footerVm={footerVm}
-        developerSettingsVm={developerSettingsVm}
-      />
-    </ReactionsSenderProvider>
+    <>
+      <CallAudioRenderer vm={vm} />
+      {feedOnly?.enabled ? (
+        <FeedOnlyView vm={vm} includeSelf={feedOnly.includeSelf} />
+      ) : footerVm !== null && developerSettingsVm !== null ? (
+        <ReactionsSenderProvider vm={vm} rtcSession={props.rtcSession}>
+          <InCallView
+            {...props}
+            vm={vm}
+            footerVm={footerVm}
+            developerSettingsVm={developerSettingsVm}
+          />
+        </ReactionsSenderProvider>
+      ) : null}
+    </>
   );
 };
 
@@ -531,10 +527,9 @@ export const InCallView: FC<InCallViewProps> = ({
           ? null
           : (mediaId: string): void => {
               if (mediaId === focusedMediaId) {
-                vm.setGridMode("grid");
+                vm.focusMedia(null);
               } else {
                 vm.focusMedia(mediaId);
-                vm.setGridMode("spotlight");
               }
             };
         const showRingingStatus = vm.ringingStatusLocation === "tile";
@@ -616,10 +611,9 @@ export const InCallView: FC<InCallViewProps> = ({
               ? null
               : (mediaId: string): void => {
                   if (mediaId === vm.focusedMediaId$.value) {
-                    vm.setGridMode("grid");
+                    vm.focusMedia(null);
                   } else {
                     vm.focusMedia(mediaId);
-                    vm.setGridMode("spotlight");
                   }
                 }
           }

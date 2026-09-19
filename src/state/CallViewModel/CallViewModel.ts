@@ -1096,8 +1096,20 @@ export function createCallViewModel$(
 
   const focusedMediaIdSubject$ = new BehaviorSubject<string | null>(null);
   const focusedMediaId$ = scope.behavior(focusedMediaIdSubject$);
+  let layoutBeforeFocus: GridMode | null = null;
   const focusMedia = (mediaId: string | null): void => {
+    if (mediaId !== null) {
+      if (!feeds$.value.some((media) => media.id === mediaId)) return;
+      layoutBeforeFocus ??= gridMode$.value;
+    }
     focusedMediaIdSubject$.next(mediaId);
+    if (mediaId !== null) {
+      layoutSwitch.setLayout("spotlight");
+    } else if (layoutBeforeFocus !== null) {
+      const previous = layoutBeforeFocus;
+      layoutBeforeFocus = null;
+      layoutSwitch.setLayout(previous);
+    }
   };
   const focusedMedia$ = scope.behavior<MediaViewModel | undefined>(
     combineLatest([feeds$, focusedMediaId$], (feeds, focusedMediaId) =>
@@ -1109,7 +1121,7 @@ export function createCallViewModel$(
 
   focusedMedia$.pipe(scope.bind()).subscribe((focusedMedia) => {
     if (focusedMedia === undefined && focusedMediaIdSubject$.value !== null)
-      focusedMediaIdSubject$.next(null);
+      focusMedia(null);
   });
 
   // Report per-participant speaking/media state to the hosting client (Element
@@ -1317,7 +1329,10 @@ export function createCallViewModel$(
   );
   const gridMode$ = layoutSwitch.layout$;
   const setGridMode = (value: GridMode): void => {
-    if (value === "grid") focusMedia(null);
+    if (value === "grid") {
+      layoutBeforeFocus = null;
+      focusedMediaIdSubject$.next(null);
+    }
     layoutSwitch.setLayout(value);
   };
 

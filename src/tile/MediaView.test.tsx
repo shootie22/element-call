@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { describe, expect, it, test } from "vitest";
+import { describe, expect, it, test, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { axe } from "vitest-axe";
 import { TooltipProvider } from "@vector-im/compound-web";
@@ -64,6 +64,23 @@ describe("MediaView", () => {
   test("is accessible", async () => {
     const { container } = render(<MediaView {...baseProps} />);
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  test("tile controls do not trigger the focus action", () => {
+    const onClick = vi.fn();
+    const onControlClick = vi.fn();
+    render(
+      <MediaView
+        {...baseProps}
+        onClick={onClick}
+        primaryButton={<button onClick={onControlClick}>Expand share</button>}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Expand share" }));
+    expect(onControlClick).toHaveBeenCalledOnce();
+    expect(onClick).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("videoTile"));
+    expect(onClick).toHaveBeenCalledOnce();
   });
 
   describe("placeholder track", () => {
