@@ -106,7 +106,10 @@ mobileTest(
       ]);
     });
 
-    // Open settings to select earpiece
+    // Open settings to select earpiece. The edge-to-edge one-on-one layout
+    // hides the footer after a few seconds without interaction, so hover the
+    // call view first to bring it back.
+    await guestPage.mouse.move(200, 300);
     await guestPage.getByRole("button", { name: "Settings" }).click();
     await guestPage
       .getByRole("radio", { name: "Handset", exact: true })
