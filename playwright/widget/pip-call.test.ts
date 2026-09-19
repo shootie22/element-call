@@ -40,6 +40,10 @@ widgetTest("Put call in PIP", async ({ addUser, browserName }) => {
 
   await TestHelpers.joinCallInCurrentRoom(timo.page);
 
+  await Promise.all(
+    [valere, timo].map(async (user) => TestHelpers.enableVideo(user.page)),
+  );
+
   const frame = timo.page
     .locator('iframe[title="Element Call"]')
     .contentFrame();

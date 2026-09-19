@@ -57,6 +57,12 @@ widgetTest("Create and join a group call", async ({ addUser, browserName }) => {
   );
 
   await Promise.all(
+    [valere, timo, robin, halfshot, florian].map(async (user) =>
+      TestHelpers.enableVideo(user.page),
+    ),
+  );
+
+  await Promise.all(
     [timo, robin, halfshot, florian].map(async (user) => {
       const frame = user.page
         .locator('iframe[title="Element Call"]')

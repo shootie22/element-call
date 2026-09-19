@@ -21,6 +21,7 @@ test("@mobile Start a new call then leave and show the feedback screen", async (
   await page.getByTestId("home_go").click();
 
   // await page.pause();
+  await page.getByRole("switch", { name: "Start video" }).click();
   await expect(page.locator("video")).toBeVisible();
   await expect(page.getByTestId("lobby_joinCall")).toBeVisible();
   // Join the call
@@ -68,6 +69,16 @@ mobileTest(
     await expect(guestPage.getByTestId("joincall_joincall")).toBeVisible();
     await guestPage.getByTestId("joincall_joincall").click();
     await guestPage.getByTestId("lobby_joinCall").click();
+
+    for (const callPage of [creatorPage, guestPage]) {
+      await callPage.getByRole("switch", { name: "Start video" }).click();
+      await expect(
+        callPage.getByRole("switch", {
+          name: "Stop video",
+          checked: true,
+        }),
+      ).toBeVisible();
+    }
 
     // ========
     // ASSERT: check that there are two members in the call

@@ -51,6 +51,8 @@ test("Should automatically retry non fatal JWT errors", async ({
   await page.getByTestId("home_displayName").fill("John Doe");
   await page.getByTestId("home_go").click();
 
+  await page.getByRole("switch", { name: "Start video" }).click();
+
   let firstCall = true;
   let hasRetriedCallback: (value: PromiseLike<void> | void) => void;
   const hasRetriedPromise = new Promise<void>((resolve) => {

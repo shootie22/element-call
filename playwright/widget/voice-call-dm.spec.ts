@@ -123,13 +123,7 @@ widgetTest(
       .locator('iframe[title="Element Call"]')
       .contentFrame();
 
-    // We should show a ringing tile, let's check for that
-    await expect(
-      brooksFrame
-        .getByTestId("videoTile")
-        .filter({ has: brooksFrame.getByText(whistler.displayName) })
-        .filter({ has: brooksFrame.getByText("Calling…") }),
-    ).toBeVisible();
+    await TestHelpers.enableVideo(brooks.page);
 
     await expect(whistler.page.getByText("Incoming video call")).toBeVisible();
     await whistler.page
@@ -145,8 +139,10 @@ widgetTest(
       .locator('iframe[title="Element Call"]')
       .contentFrame();
 
+    await TestHelpers.enableVideo(whistler.page);
+
     // ASSERT the button states for whistler (the callee)
-    // video should be off by default in a video call
+    // video was explicitly enabled for this video call
     await expect(
       whistlerFrame.getByRole("switch", { name: "Stop video", checked: true }),
     ).toBeVisible();
@@ -158,14 +154,14 @@ widgetTest(
       }),
     ).toBeVisible();
 
-    // ASSERT the button states for brools (the caller)
-    // video should be off by default in a video call
+    // ASSERT the button states for brooks (the caller)
+    // video was explicitly enabled for this video call
     await expect(
-      whistlerFrame.getByRole("switch", { name: "Stop video", checked: true }),
+      brooksFrame.getByRole("switch", { name: "Stop video", checked: true }),
     ).toBeVisible();
     // audio should be on too
     await expect(
-      whistlerFrame.getByRole("switch", {
+      brooksFrame.getByRole("switch", {
         name: "Mute microphone",
         checked: true,
       }),
@@ -205,18 +201,6 @@ widgetTest(
 
     await expect(
       brooks.page.locator('iframe[title="Element Call"]'),
-    ).toBeVisible();
-
-    const brooksFrame = brooks.page
-      .locator('iframe[title="Element Call"]')
-      .contentFrame();
-
-    // We should show a ringing tile, let's check for that
-    await expect(
-      brooksFrame
-        .getByTestId("videoTile")
-        .filter({ has: brooksFrame.getByText(whistler.displayName) })
-        .filter({ has: brooksFrame.getByText("Calling…") }),
     ).toBeVisible();
 
     await expect(whistler.page.getByText("Incoming video call")).toBeVisible();

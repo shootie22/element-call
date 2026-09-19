@@ -54,6 +54,10 @@ modePairs.forEach(([rtcMode1, rtcMode2]) => {
       // timo joins
       await TestHelpers.joinCallInCurrentRoom(timo.page);
 
+      await Promise.all(
+        [florian, timo].map(async (user) => TestHelpers.enableVideo(user.page)),
+      );
+
       // We should see 2 video tiles everywhere now
       for (const user of [timo, florian]) {
         const frame = user.page

@@ -35,6 +35,7 @@ test("can only interact with header and footer while reconnecting", async ({
   await page.clock.fastForward(10);
   await page.getByTestId("home_go").click();
 
+  await page.getByRole("switch", { name: "Start video" }).click();
   await expect(page.locator("video")).toBeVisible();
   await expect(page.getByTestId("lobby_joinCall")).toBeVisible();
 

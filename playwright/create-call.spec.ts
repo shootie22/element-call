@@ -18,6 +18,7 @@ test("Start a new call then leave and show the feedback screen", async ({
   await page.getByTestId("home_displayName").fill("John Doe");
   await page.getByTestId("home_go").click();
 
+  await page.getByRole("switch", { name: "Start video" }).click();
   await expect(page.locator("video")).toBeVisible();
   await expect(page.getByTestId("lobby_joinCall")).toBeVisible();
 
@@ -77,7 +78,6 @@ test("BugFix: When unmuting in lobby, you had to click twice to unmute in call",
   await expect(microphoneButton).toBeEnabled({ timeout: 10_000 });
 
   await microphoneButton.click();
-  await cameraButton.click();
 
   // Should be muted now
   await expect(microphoneButton).toHaveAccessibleName("Unmute microphone");

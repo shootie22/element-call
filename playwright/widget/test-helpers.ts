@@ -55,6 +55,17 @@ export class TestHelpers {
       .click();
   }
 
+  public static async enableVideo(page: Page): Promise<void> {
+    const frame = page.locator('iframe[title="Element Call"]').contentFrame();
+    const button = frame.getByRole("switch", { name: "Start video" });
+
+    await expect(button).toBeVisible({ timeout: 30_000 });
+    await button.click();
+    await expect(
+      frame.getByRole("switch", { name: "Stop video", checked: true }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
   public static async joinCallInCurrentDM(
     page: Page,
     audioOnly: boolean = false,
