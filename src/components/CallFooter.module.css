@@ -96,7 +96,17 @@ Once we exceed 500 we hide everything except the buttons.
 */
 @container element-call (max-width: 500px) {
   .footer {
-    grid-template-areas: "buttons buttons buttons";
+    grid-template-columns: 1fr;
+    grid-template-areas: "buttons";
+  }
+
+  /* With the extra controls (video source switcher, deafen, ...) the button
+    row no longer fits on phone-sized viewports and would overflow off both
+    edges, taking the centered settings button with it. Wrap instead. */
+  .buttons {
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
   }
 
   .settingsOnlyShowNarrow {
