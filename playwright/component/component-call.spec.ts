@@ -111,6 +111,7 @@ test("keeps the call inside the container, wherever the host put it", async ({
 
   // Large enough for the layout switch to be offered
   await resizeContainer(container, { width: 900, height: 640 });
+  await pane.getByRole("switch", { name: "Start video" }).click();
   await pane.getByTestId("lobby_joinCall").click({ timeout: 60_000 });
   await expect(pane.getByTestId("footer-container")).toBeVisible({
     timeout: 60_000,
@@ -273,6 +274,7 @@ test("looks the same in a small container as in a small window", async ({
   const pane = panes.first();
   const container = pane.getByTestId("call-container");
   await resizeContainer(container, size);
+  await pane.getByRole("switch", { name: "Start video" }).click();
   await pane.getByTestId("lobby_joinCall").click({ timeout: 60_000 });
   await expect(pane.locator("[data-layout]")).toBeVisible({ timeout: 60_000 });
   const component = await callShape(pane);

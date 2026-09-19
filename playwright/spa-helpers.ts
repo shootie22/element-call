@@ -31,8 +31,10 @@ async function createCall(
   await page.getByTestId("home_displayName").fill(userName);
   await page.getByTestId("home_go").click();
 
-  await expect(page.locator("video")).toBeVisible();
   await expect(page.getByTestId("lobby_joinCall")).toBeVisible();
+  // Cameras start off in this fork; video-call tests must opt in explicitly.
+  await page.getByRole("switch", { name: "Start video" }).click();
+  await expect(page.locator("video")).toBeVisible();
 
   if (mode) {
     await setRtcModeFromSettings(page, mode);
@@ -82,6 +84,7 @@ async function joinCallFromInviteLink(
   await page.getByTestId("joincall_displayName").fill(displayName);
   await expect(page.getByTestId("joincall_joincall")).toBeVisible();
   await page.getByTestId("joincall_joincall").click();
+  await page.getByRole("switch", { name: "Start video" }).click();
 
   if (mode) {
     await setRtcModeFromSettings(page, mode);
